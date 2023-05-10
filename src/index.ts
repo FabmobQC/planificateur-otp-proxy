@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-misused-promises */
 import axios from 'axios'
+import cors from 'cors'
 import 'dotenv/config'
 import express from 'express'
 import type { Request } from 'express'
@@ -29,25 +30,38 @@ interface TaxiApiRequestData {
   useAssetTypes: ['taxi-registry-standard-route'] | ['taxi-registry-minivan-route'] | ['axi-registry-special-need-route']
 }
 
-const data: TaxiApiRequestData = {
-  from: {
-    coordinates: {
-      lat: '45.52113922722745',
-      lon: '-73.57644290418484'
+interface TaxiApiResponseData {
+  validUntil: string
+  options: [
+    {
+      mainAssetType: {
+        id: string
+      }
+      departureTime: string
+      arrivalTime: string
+      from: {
+        coordinates: Coordinates
+      }
+      to: {
+        coordinates: Coordinates
+      }
+      pricing: {
+        estimated: boolean
+        parts: [
+          {
+            amount: number
+            currencyCode: string
+          }
+        ]
+      }
     }
-  },
-  to: {
-    coordinates: {
-      lat: '45.508902',
-      lon: '-73.554398'
-    }
-  },
-  useAssetTypes: ['taxi-registry-standard-route']
+  ]
 }
 
 const app = express()
+app.use(cors())
 
-const getTaxiPricing = async (data: TaxiApiRequestData): Promise<TaxiApiRequestData> => {
+const getTaxiPricing = async (data: TaxiApiRequestData): Promise<TaxiApiResponseData> => {
   const response = await axios.post('https://taximtl.ville.montreal.qc.ca/api/inquiry', data, {
     headers: {
       'X-API-KEY': taxiApiKey
@@ -56,17 +70,62 @@ const getTaxiPricing = async (data: TaxiApiRequestData): Promise<TaxiApiRequestD
   return response.data
 }
 
-const getOtpResponse = async (req: Request): Promise<any> => {
-  const response = await axios.get(`${otpAddress}${req.url}`)
+const getOtpResult = async (req: Request): Promise<any> => {
+  const response = await axios.get(`${otpAddress}${req.url}`, { headers: req.headers })
   return response.data
 }
 
+const getCoordinates = (param: any): Coordinates | undefined => {
+  if (typeof param !== 'string') {
+    return undefined
+  }
+  // param is in the form of 'Savoir-faire Linux, Rue Saint-Urbain, Villeray–Saint-Michel–Parc-Extension, Quebec, H2R 2Y5, Montreal, Canada::45.53427475,-73.62050405015297'
+  const coords = param?.split('::')?.[1]?.split(',')
+  if (coords === undefined || coords[0] === undefined || coords[1] === undefined) {
+    return undefined
+  }
+  return {
+    lat: coords[0],
+    lon: coords[1]
+  }
+}
+
+app.get('/otp/routers/default/plan', async (req, res) => {
+  const fromPlace = getCoordinates(req.query['fromPlace'])
+  const toPlace = getCoordinates(req.query['toPlace'])
+
+  if (fromPlace === undefined || toPlace === undefined) {
+    res.send('fromPlace or toPlace is undefined')
+    res.status(400)
+    return
+  }
+
+  const taxiData: TaxiApiRequestData = {
+    from: {
+      coordinates: fromPlace
+    },
+    to: {
+      coordinates: toPlace
+    },
+    useAssetTypes: ['taxi-registry-standard-route']
+  }
+
+  await Promise.all([
+    getTaxiPricing(taxiData),
+    getOtpResult(req)
+  ]).then((values) => {
+    const taxiPricing = values[0]
+    console.log(taxiPricing)
+    const otpResponse = values[1]
+    res.send(otpResponse)
+  }).catch((error) => {
+    res.send(error)
+  })
+})
+
 app.get('*', async (req, res) => {
-  console.log('Request', req.method, req.url, req.protocol, req.hostname)
   try {
-    const taxiPricing = await getTaxiPricing(data)
-    const otpResponse = await getOtpResponse(req)
-    console.log('taxiPricing', taxiPricing)
+    const otpResponse = await getOtpResult(req)
     res.send(otpResponse)
   } catch (error) {
     res.send(error)
