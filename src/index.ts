@@ -90,6 +90,16 @@ const getCoordinates = (param: any): Coordinates | undefined => {
   }
 }
 
+const buildTaxiItinary = (otpItinaries: Array<Record<string, any>>, _taxiPricing: TaxiApiResponseData): Record<string, any> | undefined => {
+  return {
+    ...otpItinaries[0],
+    legs: [{
+      ...otpItinaries[0]?.['legs'][0],
+      mode: 'CAR'
+    }]
+  }
+}
+
 app.get('/otp/routers/default/plan', async (req, res) => {
   const fromPlace = getCoordinates(req.query['fromPlace'])
   const toPlace = getCoordinates(req.query['toPlace'])
@@ -115,8 +125,9 @@ app.get('/otp/routers/default/plan', async (req, res) => {
     getOtpResult(req)
   ]).then((values) => {
     const taxiPricing = values[0]
-    console.log(taxiPricing)
     const otpResponse = values[1]
+    const taxiItinary = buildTaxiItinary(otpResponse.plan.itineraries, taxiPricing)
+    otpResponse.plan.itineraries.push(taxiItinary)
     res.send(otpResponse)
   }).catch((error) => {
     res.send(error)
