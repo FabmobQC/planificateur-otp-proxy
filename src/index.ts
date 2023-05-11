@@ -15,53 +15,10 @@ if (process.env['OTP_ADDRESS'] === undefined) {
 }
 const otpAddress: string = process.env['OTP_ADDRESS']
 
-interface Coordinates {
-  lat: string
-  lon: string
-}
-
-interface TaxiApiRequestData {
-  from: {
-    coordinates: Coordinates
-  }
-  to: {
-    coordinates: Coordinates
-  }
-  useAssetTypes: ['taxi-registry-standard-route'] | ['taxi-registry-minivan-route'] | ['axi-registry-special-need-route']
-}
-
-interface TaxiApiResponseData {
-  validUntil: string
-  options: [
-    {
-      mainAssetType: {
-        id: string
-      }
-      departureTime: string
-      arrivalTime: string
-      from: {
-        coordinates: Coordinates
-      }
-      to: {
-        coordinates: Coordinates
-      }
-      pricing: {
-        estimated: boolean
-        parts: [
-          {
-            amount: number
-            currencyCode: string
-          }
-        ]
-      }
-    }
-  ]
-}
-
 const app = express()
 app.use(cors())
 
-const getTaxiPricing = async (data: TaxiApiRequestData): Promise<TaxiApiResponseData> => {
+const getTaxiPricing = async (data: GofsPricingApiRequest): Promise<GofsPricingApiResponse> => {
   const response = await axios.post('https://taximtl.ville.montreal.qc.ca/api/inquiry', data, {
     headers: {
       'X-API-KEY': taxiApiKey
@@ -75,7 +32,7 @@ const getOtpResult = async (req: Request): Promise<any> => {
   return response.data
 }
 
-const getCoordinates = (param: any): Coordinates | undefined => {
+const getCoordinates = (param: any): GofsCoordinates | undefined => {
   if (typeof param !== 'string') {
     return undefined
   }
@@ -90,7 +47,7 @@ const getCoordinates = (param: any): Coordinates | undefined => {
   }
 }
 
-const buildTaxiItinary = (otpItinaries: Array<Record<string, any>>, _taxiPricing: TaxiApiResponseData): Record<string, any> | undefined => {
+const buildTaxiItinary = (otpItinaries: Array<Record<string, any>>, _taxiPricing: GofsPricingApiResponse): Record<string, any> | undefined => {
   return {
     ...otpItinaries[0],
     legs: [{
@@ -110,7 +67,7 @@ app.get('/otp/routers/default/plan', async (req, res) => {
     return
   }
 
-  const taxiData: TaxiApiRequestData = {
+  const taxiData: GofsPricingApiRequest = {
     from: {
       coordinates: fromPlace
     },
