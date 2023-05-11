@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-misused-promises */
 import axios from 'axios'
 import cors from 'cors'
+import dayjs from 'dayjs'
 import 'dotenv/config'
 import express from 'express'
 import type { Request } from 'express'
@@ -53,13 +54,70 @@ const buildTaxiItinary = (otpItinaries: Itinerary[], taxiPricing: GofsPricingApi
     return []
   }
 
-  return taxiPricing.options.map((_option) => ({
-    ...otpItinaries[0],
-    legs: [{
-      ...otpItinaries[0]?.legs[0],
-      mode: 'CAR'
-    }]
-  }))
+  return taxiPricing.options.map((option) => {
+    const startTime = dayjs(option.departureTime).valueOf()
+    const endTime = dayjs(option.arrivalTime).valueOf()
+    const duration = (endTime - startTime) / 1000
+    return {
+      duration,
+      startTime,
+      endTime,
+      legs: [{
+        agencyTimeZoneOffset: 0,
+        arrivalDelay: 0,
+        departureDelay: 0,
+        distance: 0,
+        duration,
+        endTime,
+        from: otpItinaries[0].legs[0].from,
+        hailedCar: true,
+        interlineWithPreviousLeg: false,
+        intermediateStops: [],
+        legGeometry: otpItinaries[0].legs[0].legGeometry,
+        mode: 'CAR',
+        pathway: false,
+        realTime: false,
+        rentedBike: false,
+        rentedCar: false,
+        rentedVehicle: false,
+        startTime,
+        steps: [{
+          area: true,
+          bogusName: false,
+          distance: 0,
+          elevation: [],
+          lat: otpItinaries[0].legs[0].to.lat,
+          lon: otpItinaries[0].legs[0].to.lon,
+          relativeDirection: '',
+          stayOn: false,
+          streetName: ''
+        }],
+        to: otpItinaries[0].legs[0].to,
+        transitLeg: false
+      }],
+      elevationGained: otpItinaries[0].elevationGained,
+      elevationLost: otpItinaries[0].elevationLost,
+      transfers: 0,
+      transitTime: 0,
+      waitingTime: 0,
+      walkDistance: 0,
+      walkLimitExceeded: false,
+      walkTime: 0,
+      fare: {
+        fare: {
+          regular: {
+            cents: 1234, // option.pricing.parts[0].amount, // TODO: uncomment when API return estimation
+            currency: {
+              currency: option.pricing.parts[0].currencyCode,
+              defaultFractionDigits: 5,
+              currencyCode: option.pricing.parts[0].currencyCode,
+              symbol: '$'
+            }
+          }
+        }
+      }
+    }
+  })
 }
 
 app.get('/otp/routers/default/plan', async (req, res) => {
