@@ -4,6 +4,7 @@ import cors from 'cors'
 import 'dotenv/config'
 import express from 'express'
 import type { Request } from 'express'
+import type { Itinerary, PlanResponse } from './otp'
 
 if (process.env['TAXI_API_KEY'] === undefined) {
   throw new Error('TAXI_API_KEY is undefined. Please set it in .env file.')
@@ -27,7 +28,7 @@ const getTaxiPricing = async (data: GofsPricingApiRequest): Promise<GofsPricingA
   return response.data
 }
 
-const getOtpResult = async (req: Request): Promise<any> => {
+const getOtpResult = async (req: Request): Promise<PlanResponse> => {
   const response = await axios.get(`${otpAddress}${req.url}`, { headers: req.headers })
   return response.data
 }
@@ -47,14 +48,18 @@ const getCoordinates = (param: any): GofsCoordinates | undefined => {
   }
 }
 
-const buildTaxiItinary = (otpItinaries: Array<Record<string, any>>, _taxiPricing: GofsPricingApiResponse): Record<string, any> | undefined => {
-  return {
+const buildTaxiItinary = (otpItinaries: Itinerary[], taxiPricing: GofsPricingApiResponse): Itinerary[] => {
+  if (otpItinaries[0] === undefined) {
+    return []
+  }
+
+  return taxiPricing.options.map((_option) => ({
     ...otpItinaries[0],
     legs: [{
-      ...otpItinaries[0]?.['legs'][0],
+      ...otpItinaries[0]?.legs[0],
       mode: 'CAR'
     }]
-  }
+  }))
 }
 
 app.get('/otp/routers/default/plan', async (req, res) => {
@@ -84,7 +89,7 @@ app.get('/otp/routers/default/plan', async (req, res) => {
     const taxiPricing = values[0]
     const otpResponse = values[1]
     const taxiItinary = buildTaxiItinary(otpResponse.plan.itineraries, taxiPricing)
-    otpResponse.plan.itineraries.push(taxiItinary)
+    otpResponse.plan.itineraries.push(...taxiItinary)
     res.send(otpResponse)
   }).catch((error) => {
     res.send(error)
