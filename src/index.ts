@@ -8,7 +8,7 @@ import express from 'express'
 import polyline from '@mapbox/polyline'
 
 import type { Request } from 'express'
-import type { Itinerary, PlanResponse } from './otp'
+import type { Itinerary, Place, Plan, PlanResponse } from './otp'
 
 if (process.env.TAXI_API_KEY === undefined) {
   throw new Error('TAXI_API_KEY is undefined. Please set it in .env file.')
@@ -47,26 +47,23 @@ const getCoordinates = (param: any): GofsCoordinates | undefined => {
     return undefined
   }
   return {
-    lat: coords[0],
-    lon: coords[1]
+    lat: parseFloat(coords[0]),
+    lon: parseFloat(coords[1])
   }
 }
 
-const buildTaxiItinary = (otpItinaries: Itinerary[], taxiPricing: GofsPricingApiResponse): Itinerary[] => {
-  if (otpItinaries[0] === undefined) {
-    return []
-  }
+const buildTaxiItinerary = (otpPlan: Plan, taxiPricing: GofsPricingApiResponse): Itinerary[] => {
+  const firstItinerary = otpPlan.itineraries[0]
+  const from = otpPlan.from
+  const to = otpPlan.to
 
   return taxiPricing.options.map((option) => {
     const startTime = dayjs(option.departureTime).valueOf()
     const endTime = dayjs(option.arrivalTime).valueOf()
     const duration = (endTime - startTime) / 1000
 
-    const from = otpItinaries[0].legs[0].from
-    const to = otpItinaries[0].legs[0].to
-    const points = [[from.lat, from.lon], [to.lat, to.lon]]
     const legGeometry = {
-      points: polyline.encode(points),
+      points: polyline.encode([[from.lat, from.lon], [to.lat, to.lon]]),
       length: 2
     }
 
@@ -107,8 +104,8 @@ const buildTaxiItinary = (otpItinaries: Itinerary[], taxiPricing: GofsPricingApi
         to,
         transitLeg: false
       }],
-      elevationGained: otpItinaries[0].elevationGained,
-      elevationLost: otpItinaries[0].elevationLost,
+      elevationGained: firstItinerary.elevationGained,
+      elevationLost: firstItinerary.elevationLost,
       transfers: 0,
       transitTime: 0,
       waitingTime: 0,
@@ -158,7 +155,7 @@ app.get('/otp/routers/default/plan', async (req, res) => {
   ]).then((values) => {
     const taxiPricing = values[0]
     const otpResponse = values[1]
-    const taxiItinary = buildTaxiItinary(otpResponse.plan.itineraries, taxiPricing)
+    const taxiItinary = buildTaxiItinerary(otpResponse.plan, taxiPricing)
     otpResponse.plan.itineraries.push(...taxiItinary)
     res.send(otpResponse)
   }).catch((error) => {

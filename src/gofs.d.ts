@@ -1,6 +1,6 @@
 interface GofsCoordinates {
-  lat: string
-  lon: string
+  lat: number
+  lon: number
 }
 
 interface GofsPricingApiRequest {
