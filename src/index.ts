@@ -4,6 +4,9 @@ import cors from 'cors'
 import dayjs from 'dayjs'
 import 'dotenv/config'
 import express from 'express'
+// @ts-expect-error polyline does not have a declaration file
+import polyline from '@mapbox/polyline'
+
 import type { Request } from 'express'
 import type { Itinerary, PlanResponse } from './otp'
 
@@ -58,6 +61,15 @@ const buildTaxiItinary = (otpItinaries: Itinerary[], taxiPricing: GofsPricingApi
     const startTime = dayjs(option.departureTime).valueOf()
     const endTime = dayjs(option.arrivalTime).valueOf()
     const duration = (endTime - startTime) / 1000
+
+    const from = otpItinaries[0].legs[0].from
+    const to = otpItinaries[0].legs[0].to
+    const points = [[from.lat, from.lon], [to.lat, to.lon]]
+    const legGeometry = {
+      points: polyline.encode(points),
+      length: 2
+    }
+
     return {
       duration,
       startTime,
@@ -69,11 +81,11 @@ const buildTaxiItinary = (otpItinaries: Itinerary[], taxiPricing: GofsPricingApi
         distance: 0,
         duration,
         endTime,
-        from: otpItinaries[0].legs[0].from,
+        from,
         hailedCar: true,
         interlineWithPreviousLeg: false,
         intermediateStops: [],
-        legGeometry: otpItinaries[0].legs[0].legGeometry,
+        legGeometry,
         mode: 'CAR',
         pathway: false,
         realTime: false,
@@ -86,13 +98,13 @@ const buildTaxiItinary = (otpItinaries: Itinerary[], taxiPricing: GofsPricingApi
           bogusName: false,
           distance: 0,
           elevation: [],
-          lat: otpItinaries[0].legs[0].to.lat,
-          lon: otpItinaries[0].legs[0].to.lon,
+          lat: to.lat,
+          lon: to.lon,
           relativeDirection: '',
           stayOn: false,
           streetName: ''
         }],
-        to: otpItinaries[0].legs[0].to,
+        to,
         transitLeg: false
       }],
       elevationGained: otpItinaries[0].elevationGained,

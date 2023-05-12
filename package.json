@@ -7,6 +7,7 @@
     "lint": "eslint src"
   },
   "dependencies": {
+    "@mapbox/polyline": "^1.2.0",
     "@opentripplanner/types": "^5.0.0",
     "axios": "^1.4.0",
     "cors": "^2.8.5",
