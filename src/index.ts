@@ -7,15 +7,15 @@ import express from 'express'
 import type { Request } from 'express'
 import type { Itinerary, PlanResponse } from './otp'
 
-if (process.env['TAXI_API_KEY'] === undefined) {
+if (process.env.TAXI_API_KEY === undefined) {
   throw new Error('TAXI_API_KEY is undefined. Please set it in .env file.')
 }
-const taxiApiKey: string = process.env['TAXI_API_KEY']
+const taxiApiKey: string = process.env.TAXI_API_KEY
 
-if (process.env['OTP_ADDRESS'] === undefined) {
+if (process.env.OTP_ADDRESS === undefined) {
   throw new Error('OTP_ADDRESS is undefined. Please set it in .env file.')
 }
-const otpAddress: string = process.env['OTP_ADDRESS']
+const otpAddress: string = process.env.OTP_ADDRESS
 
 const app = express()
 app.use(cors())
@@ -121,8 +121,8 @@ const buildTaxiItinary = (otpItinaries: Itinerary[], taxiPricing: GofsPricingApi
 }
 
 app.get('/otp/routers/default/plan', async (req, res) => {
-  const fromPlace = getCoordinates(req.query['fromPlace'])
-  const toPlace = getCoordinates(req.query['toPlace'])
+  const fromPlace = getCoordinates(req.query.fromPlace)
+  const toPlace = getCoordinates(req.query.toPlace)
 
   if (fromPlace === undefined || toPlace === undefined) {
     res.send('fromPlace or toPlace is undefined')
