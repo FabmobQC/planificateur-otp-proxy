@@ -8,7 +8,7 @@ import express from 'express'
 import polyline from '@mapbox/polyline'
 
 import type { Request } from 'express'
-import type { Itinerary, Place, Plan, PlanResponse } from './otp'
+import type { Itinerary, Plan, PlanResponse } from './otp'
 
 if (process.env.TAXI_API_KEY === undefined) {
   throw new Error('TAXI_API_KEY is undefined. Please set it in .env file.')
@@ -115,7 +115,7 @@ const buildTaxiItinerary = (otpPlan: Plan, taxiPricing: GofsPricingApiResponse):
       fare: {
         fare: {
           regular: {
-            cents: 1234, // option.pricing.parts[0].amount, // TODO: uncomment when API return estimation
+            cents: option.pricing.parts[0].amount,
             currency: {
               currency: option.pricing.parts[0].currencyCode,
               defaultFractionDigits: 5,
