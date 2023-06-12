@@ -57,15 +57,16 @@ const buildTaxiItinerary = (otpPlan: Plan, taxiPricing: GofsPricingApiResponse):
   const from = otpPlan.from
   const to = otpPlan.to
 
+  const carLeg = firstItinerary.legs.find((leg) => leg.mode === 'CAR')
+  const legGeometry = carLeg?.legGeometry ?? {
+    points: polyline.encode([[from.lat, from.lon], [to.lat, to.lon]]),
+    length: 2
+  }
+
   return taxiPricing.options.map((option) => {
     const startTime = dayjs(option.departureTime).valueOf()
     const endTime = dayjs(option.arrivalTime).valueOf()
     const duration = (endTime - startTime) / 1000
-
-    const legGeometry = {
-      points: polyline.encode([[from.lat, from.lon], [to.lat, to.lon]]),
-      length: 2
-    }
 
     return {
       duration,
