@@ -67,6 +67,7 @@ const buildTaxiItinerary = (otpPlan: Plan, taxiPricing: GofsPricingApiResponse):
     const startTime = dayjs(option.departureTime).valueOf()
     const endTime = dayjs(option.arrivalTime).valueOf()
     const duration = (endTime - startTime) / 1000
+    const waitingTime = (startTime - otpPlan.date) / 1000
 
     return {
       duration,
@@ -109,7 +110,7 @@ const buildTaxiItinerary = (otpPlan: Plan, taxiPricing: GofsPricingApiResponse):
       elevationLost: firstItinerary.elevationLost,
       transfers: 0,
       transitTime: 0,
-      waitingTime: 0,
+      waitingTime,
       walkDistance: 0,
       walkLimitExceeded: false,
       walkTime: 0,
