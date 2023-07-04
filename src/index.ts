@@ -85,7 +85,7 @@ const buildTaxiItinerary = (otpPlan: Plan, taxiPricing: GofsPricingApiResponse):
         interlineWithPreviousLeg: false,
         intermediateStops: [],
         legGeometry,
-        mode: 'CAR',
+        mode: 'TAXI',
         pathway: false,
         realTime: false,
         rentedBike: false,
@@ -99,7 +99,7 @@ const buildTaxiItinerary = (otpPlan: Plan, taxiPricing: GofsPricingApiResponse):
           elevation: [],
           lat: to.lat,
           lon: to.lon,
-          relativeDirection: '',
+          relativeDirection: 'CONTINUE',
           stayOn: false,
           streetName: ''
         }],
