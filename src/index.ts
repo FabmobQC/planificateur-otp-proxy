@@ -7,7 +7,7 @@ import express from 'express'
 // @ts-expect-error polyline does not have a declaration file
 import polyline from '@mapbox/polyline'
 
-import type { Request } from 'express'
+import type { Request, Response } from 'express'
 import type { Itinerary, Plan, PlanResponse } from './otp'
 
 if (process.env.TAXI_API_KEY === undefined) {
@@ -52,12 +52,14 @@ const getCoordinates = (param: any): GofsCoordinates | undefined => {
   }
 }
 
-const buildTaxiItinerary = (otpPlan: Plan, taxiPricing: GofsPricingApiResponse): Itinerary[] => {
-  const firstItinerary = otpPlan.itineraries[0]
+const buildTaxiItineraries = (otpPlan: Plan, taxiPricing: GofsPricingApiResponse): Itinerary[] => {
+  const carItinerary = otpPlan.itineraries.find((itinerary) => itinerary.legs.find((leg) => leg.mode === 'CAR'))
+  const baseItinerary = carItinerary ?? otpPlan.itineraries[0]
+
   const from = otpPlan.from
   const to = otpPlan.to
 
-  const carLeg = firstItinerary.legs.find((leg) => leg.mode === 'CAR')
+  const carLeg = carItinerary?.legs.find((leg) => leg.mode === 'CAR')
   const legGeometry = carLeg?.legGeometry ?? {
     points: polyline.encode([[from.lat, from.lon], [to.lat, to.lon]]),
     length: 2
@@ -106,8 +108,8 @@ const buildTaxiItinerary = (otpPlan: Plan, taxiPricing: GofsPricingApiResponse):
         to,
         transitLeg: false
       }],
-      elevationGained: firstItinerary.elevationGained,
-      elevationLost: firstItinerary.elevationLost,
+      elevationGained: baseItinerary.elevationGained,
+      elevationLost: baseItinerary.elevationLost,
       transfers: 0,
       transitTime: 0,
       waitingTime,
@@ -131,7 +133,24 @@ const buildTaxiItinerary = (otpPlan: Plan, taxiPricing: GofsPricingApiResponse):
   })
 }
 
+// Forward request to OTP as is
+const defaultController = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const otpResponse = await getOtpResult(req)
+    res.send(otpResponse)
+  } catch (error) {
+    res.send(error)
+  }
+}
+
 app.get('/otp/routers/default/plan', async (req, res) => {
+  if (req.query.mode !== 'TAXI') {
+    await defaultController(req, res)
+    return
+  }
+
+  req.url = req.url.replace('mode=TAXI', 'mode=CAR')
+
   const fromPlace = getCoordinates(req.query.fromPlace)
   const toPlace = getCoordinates(req.query.toPlace)
 
@@ -157,21 +176,14 @@ app.get('/otp/routers/default/plan', async (req, res) => {
   ]).then((values) => {
     const taxiPricing = values[0]
     const otpResponse = values[1]
-    const taxiItinary = buildTaxiItinerary(otpResponse.plan, taxiPricing)
-    otpResponse.plan.itineraries.push(...taxiItinary)
+    const taxiItinaries = buildTaxiItineraries(otpResponse.plan, taxiPricing)
+    otpResponse.plan.itineraries = taxiItinaries
     res.send(otpResponse)
   }).catch((error) => {
     res.send(error)
   })
 })
 
-app.get('*', async (req, res) => {
-  try {
-    const otpResponse = await getOtpResult(req)
-    res.send(otpResponse)
-  } catch (error) {
-    res.send(error)
-  }
-})
+app.get('*', defaultController)
 
 app.listen(3000)
