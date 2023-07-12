@@ -23,7 +23,7 @@ const otpAddress: string = process.env.OTP_ADDRESS
 const app = express()
 app.use(cors())
 
-const getTaxiPricing = async (data: GofsPricingApiRequest): Promise<GofsPricingApiResponse> => {
+const getTaxiPricing = async (data: TaxiPricingApiRequest): Promise<TaxiPricingApiResponse> => {
   const response = await axios.post('https://taximtl.ville.montreal.qc.ca/api/inquiry', data, {
     headers: {
       'X-API-KEY': taxiApiKey
@@ -52,7 +52,7 @@ const getCoordinates = (param: any): GofsCoordinates | undefined => {
   }
 }
 
-const buildTaxiItineraries = (otpPlan: Plan, taxiPricing: GofsPricingApiResponse): Itinerary[] => {
+const buildTaxiItineraries = (otpPlan: Plan, taxiPricing: TaxiPricingApiResponse): Itinerary[] => {
   const carItinerary = otpPlan.itineraries.find((itinerary) => itinerary.legs.find((leg) => leg.mode === 'CAR'))
   const baseItinerary = carItinerary ?? otpPlan.itineraries[0]
 
@@ -68,19 +68,25 @@ const buildTaxiItineraries = (otpPlan: Plan, taxiPricing: GofsPricingApiResponse
   return taxiPricing.options.map((option) => {
     const startTime = dayjs(option.departureTime).valueOf()
     const endTime = dayjs(option.arrivalTime).valueOf()
-    const duration = (endTime - startTime) / 1000
-    const waitingTime = (startTime - otpPlan.date) / 1000
 
     return {
-      duration,
+      duration: option.estimatedTravelTime ?? 0,
       startTime,
       endTime,
       legs: [{
+        agencyId: option.booking.agency.id,
+        agencyName: option.booking.agency.name,
+        agencyUrl: option.booking.webUrl ?? undefined,
+        pickupBookingInfo: {
+          contactInfo: {
+            phoneNumber: option.booking.phoneNumber ?? ''
+          }
+        },
         agencyTimeZoneOffset: 0,
         arrivalDelay: 0,
         departureDelay: 0,
         distance: 0,
-        duration,
+        duration: option.estimatedTravelTime ?? 0,
         endTime,
         from,
         hailedCar: true,
@@ -112,17 +118,17 @@ const buildTaxiItineraries = (otpPlan: Plan, taxiPricing: GofsPricingApiResponse
       elevationLost: baseItinerary.elevationLost,
       transfers: 0,
       transitTime: 0,
-      waitingTime,
+      waitingTime: option.estimatedWaitTime,
       walkDistance: 0,
       walkLimitExceeded: false,
       walkTime: 0,
       fare: {
         fare: {
           regular: {
-            cents: option.pricing.parts[0].amount,
+            cents: option.pricing.parts[0].amount * 100, // OTP expects cents
             currency: {
               currency: option.pricing.parts[0].currencyCode,
-              defaultFractionDigits: 5,
+              defaultFractionDigits: 2,
               currencyCode: option.pricing.parts[0].currencyCode,
               symbol: '$'
             }
@@ -160,14 +166,14 @@ app.get('/otp/routers/default/plan', async (req, res) => {
     return
   }
 
-  const taxiData: GofsPricingApiRequest = {
+  const taxiData: TaxiPricingApiRequest = {
     from: {
       coordinates: fromPlace
     },
     to: {
       coordinates: toPlace
     },
-    useAssetTypes: ['taxi-registry-standard-route']
+    useAssetTypes: ['taxi-registry-standard']
   }
 
   await Promise.all([

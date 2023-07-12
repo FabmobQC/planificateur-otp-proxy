@@ -3,40 +3,51 @@ interface GofsCoordinates {
   lon: number
 }
 
+interface GofsPhysicalAddress {
+  streetAddress: string
+}
+
 interface GofsPricingApiRequest {
   from: {
     coordinates: GofsCoordinates
+    physicalAddress?: GofsPhysicalAddress
   }
   to: {
     coordinates: GofsCoordinates
+    physicalAddress?: GofsPhysicalAddress
   }
-  useAssetTypes: ['taxi-registry-standard-route'] | ['taxi-registry-minivan-route'] | ['axi-registry-special-need-route']
+  departureTime?: string
+  nrOfTravelers?: number
+  useAssetTypes: string[]
+  userGroups?: string[]
+}
+
+interface GofsPrincingApiResponseOption {
+  mainAssetType: {
+    id: string
+  }
+  departureTime: string
+  arrivalTime?: string
+  from: {
+    coordinates: GofsCoordinates
+    physicalAddress?: GofsPhysicalAddress
+  }
+  to: {
+    coordinates: GofsCoordinates
+    physicalAddress?: GofsPhysicalAddress
+  }
+  pricing: {
+    estimated: boolean
+    parts: [
+      {
+        amount: number
+        currencyCode: string
+      }
+    ]
+  }
 }
 
 interface GofsPricingApiResponse {
   validUntil: string
-  options: [
-    {
-      mainAssetType: {
-        id: string
-      }
-      departureTime: string
-      arrivalTime: string
-      from: {
-        coordinates: GofsCoordinates
-      }
-      to: {
-        coordinates: GofsCoordinates
-      }
-      pricing: {
-        estimated: boolean
-        parts: [
-          {
-            amount: number
-            currencyCode: string
-          }
-        ]
-      }
-    }
-  ]
+  options: GofsPrincingApiResponseOption[]
 }
