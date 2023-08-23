@@ -1,4 +1,4 @@
-type TaxiAssetType = 'taxi-registry-standard' | 'taxi-registry-minivan' | 'axi-registry-special-need'
+type TaxiAssetType = 'taxi-registry-standard' | 'taxi-registry-minivan' | 'taxi-registry-special-need'
 
 interface TaxiPricingApiRequest extends GofsPricingApiRequest {
   to?: GofsPricingApiRequest['to']

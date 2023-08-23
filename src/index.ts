@@ -37,7 +37,37 @@ const getOtpResult = async (req: Request): Promise<PlanResponse> => {
   return response.data
 }
 
-const getCoordinates = (param: any): GofsCoordinates | undefined => {
+const isTaxiAssetType = (param: unknown): param is TaxiAssetType => {
+  if (typeof param !== 'string') {
+    return false
+  }
+  const validTypes = ['taxi-registry-standard', 'taxi-registry-minivan', 'taxi-registry-special-need']
+  return validTypes.includes(param)
+}
+
+const isTaxiAssetTypeList = (param: unknown): param is TaxiAssetType[] => {
+  if (!Array.isArray(param)) {
+    return false
+  }
+  return param.reduce?.(
+    (acc: boolean, curr: string) => acc && isTaxiAssetType(curr)
+    , true
+  )
+}
+
+const getTaxiAssetTypes = (param: unknown): TaxiAssetType[] => {
+  const defaultValue: TaxiAssetType[] = ['taxi-registry-standard']
+  if (typeof param !== 'string') {
+    return defaultValue
+  }
+  const types = param?.split(',')
+  if (isTaxiAssetTypeList(types)) {
+    return types
+  }
+  return defaultValue
+}
+
+const getCoordinates = (param: unknown): GofsCoordinates | undefined => {
   if (typeof param !== 'string') {
     return undefined
   }
@@ -111,6 +141,16 @@ const buildTaxiItineraries = (otpPlan: Plan, taxiPricing: TaxiPricingApiResponse
           stayOn: false,
           streetName: ''
         }],
+        tncData: {
+          company: option.booking.agency.name,
+          currency: option.pricing.parts[0].currencyCode,
+          displayName: option.booking.agency.name,
+          estimatedArrival: endTime,
+          maxCost: option.pricing.parts[0].amount,
+          minCost: option.pricing.parts[0].amount,
+          productId: option.mainAssetType.id,
+          travelDuration: option.estimatedTravelTime ?? 0
+        },
         to,
         transitLeg: false
       }],
@@ -159,6 +199,7 @@ app.get('/otp/routers/default/plan', async (req, res) => {
 
   const fromPlace = getCoordinates(req.query.fromPlace)
   const toPlace = getCoordinates(req.query.toPlace)
+  const assetTypes = getTaxiAssetTypes(req.query.taxiAssetType)
 
   if (fromPlace === undefined || toPlace === undefined) {
     res.send('fromPlace or toPlace is undefined')
@@ -173,7 +214,7 @@ app.get('/otp/routers/default/plan', async (req, res) => {
     to: {
       coordinates: toPlace
     },
-    useAssetTypes: ['taxi-registry-standard']
+    useAssetTypes: assetTypes
   }
 
   await Promise.all([
