@@ -9,6 +9,7 @@ import polyline from '@mapbox/polyline'
 
 import type { Request, Response } from 'express'
 import type { Itinerary, Plan, PlanResponse } from '../types/otp'
+import { isTaxiAssetTypeList } from '../types/taxi-type-predicates.js'
 
 if (process.env.TAXI_API_KEY === undefined) {
   throw new Error('TAXI_API_KEY is undefined. Please set it in .env file.')
@@ -37,30 +38,12 @@ const getOtpResult = async (req: Request): Promise<PlanResponse> => {
   return response.data
 }
 
-const isTaxiAssetType = (param: unknown): param is TaxiAssetType => {
-  if (typeof param !== 'string') {
-    return false
-  }
-  const validTypes = ['taxi-registry-standard', 'taxi-registry-minivan', 'taxi-registry-special-need']
-  return validTypes.includes(param)
-}
-
-const isTaxiAssetTypeList = (param: unknown): param is TaxiAssetType[] => {
-  if (!Array.isArray(param)) {
-    return false
-  }
-  return param.reduce?.(
-    (acc: boolean, curr: string) => acc && isTaxiAssetType(curr)
-    , true
-  )
-}
-
-const getTaxiAssetTypes = (param: unknown): TaxiAssetType[] => {
+const getTaxiAssetTypes = (value: unknown): TaxiAssetType[] => {
   const defaultValue: TaxiAssetType[] = ['taxi-registry-standard']
-  if (typeof param !== 'string') {
+  if (typeof value !== 'string') {
     return defaultValue
   }
-  const types = param?.split(',')
+  const types = value?.split(',')
   if (isTaxiAssetTypeList(types)) {
     return types
   }

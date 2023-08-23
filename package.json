@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "start": "tsc-watch --build --onSuccess \"node dist/index.js\"",
+    "start": "tsc-watch --build --onSuccess \"node dist/src/index.js\"",
     "lint": "eslint src"
   },
   "dependencies": {
