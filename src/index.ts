@@ -8,7 +8,7 @@ import express from 'express'
 import polyline from '@mapbox/polyline'
 
 import type { Request, Response } from 'express'
-import type { Itinerary, Plan, PlanResponse } from './otp'
+import type { Itinerary, Plan, PlanResponse } from '../types/otp'
 
 if (process.env.TAXI_API_KEY === undefined) {
   throw new Error('TAXI_API_KEY is undefined. Please set it in .env file.')
