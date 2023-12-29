@@ -3,12 +3,11 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "start": "tsc-watch --build --onSuccess \"node dist/src/index.js\"",
+    "start": "tsc-watch --build --onSuccess \"node dist/index.js\"",
     "lint": "eslint src"
   },
   "dependencies": {
     "@mapbox/polyline": "^1.2.0",
-    "@opentripplanner/types": "^5.0.0",
     "axios": "^1.4.0",
     "cors": "^2.8.5",
     "dayjs": "^1.11.7",
@@ -16,6 +15,7 @@
     "express": "^4.18.2"
   },
   "devDependencies": {
+    "@opentripplanner/types": "^6.1.1",
     "@types/cors": "^2.8.13",
     "@types/express": "^4.17.17",
     "@typescript-eslint/eslint-plugin": "^5.59.5",

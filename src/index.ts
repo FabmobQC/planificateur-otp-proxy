@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-misused-promises */
-import axios from 'axios'
+import axios, { type AxiosResponse } from 'axios'
 import cors from 'cors'
 import dayjs from 'dayjs'
 import 'dotenv/config'
@@ -8,8 +8,10 @@ import express from 'express'
 import polyline from '@mapbox/polyline'
 
 import type { Request, Response } from 'express'
-import type { Itinerary, Plan, PlanResponse } from '../types/otp'
-import { isTaxiAssetTypeList } from '../types/taxi-type-predicates.js'
+import type { Itinerary, Plan, ReqBody, PlanResponse, Variables } from '../types/otp'
+
+type GraphQLResponse = Response<PlanResponse>
+type GraphQlRequest = Request<unknown, GraphQLResponse, ReqBody>
 
 if (process.env.TAXI_API_KEY === undefined) {
   throw new Error('TAXI_API_KEY is undefined. Please set it in .env file.')
@@ -23,6 +25,7 @@ const otpAddress: string = process.env.OTP_ADDRESS
 
 const app = express()
 app.use(cors())
+app.use(express.json())
 
 const getTaxiPricing = async (data: TaxiPricingApiRequest): Promise<TaxiPricingApiResponse> => {
   const response = await axios.post('https://taximtl.ville.montreal.qc.ca/api/inquiry', data, {
@@ -33,21 +36,18 @@ const getTaxiPricing = async (data: TaxiPricingApiRequest): Promise<TaxiPricingA
   return response.data
 }
 
-const getOtpResult = async (req: Request): Promise<PlanResponse> => {
-  const response = await axios.get(`${otpAddress}${req.url}`, { headers: req.headers })
-  return response.data
-}
-
-const getTaxiAssetTypes = (value: unknown): TaxiAssetType[] => {
-  const defaultValue: TaxiAssetType[] = ['taxi-registry-standard']
-  if (typeof value !== 'string') {
-    return defaultValue
-  }
-  const types = value?.split(',')
-  if (isTaxiAssetTypeList(types)) {
-    return types
-  }
-  return defaultValue
+const getTaxiAssetTypes = (variables: Variables): TaxiAssetType[] => {
+  const assetTypes: TaxiAssetType[] = []
+  Object.entries(variables).forEach(([key, value]) => {
+    if (key === 'taxiStandard' && value === true) {
+      assetTypes.push('taxi-registry-standard')
+    } else if (key === 'taxiMinivan' && value === true) {
+      assetTypes.push('taxi-registry-minivan')
+    } else if (key === 'taxiSpecial' && value === true) {
+      assetTypes.push('taxi-registry-special-need')
+    }
+  })
+  return assetTypes
 }
 
 const getCoordinates = (param: unknown): GofsCoordinates | undefined => {
@@ -69,8 +69,10 @@ const buildTaxiItineraries = (otpPlan: Plan, taxiPricing: TaxiPricingApiResponse
   const carItinerary = otpPlan.itineraries.find((itinerary) => itinerary.legs.find((leg) => leg.mode === 'CAR'))
   const baseItinerary = carItinerary ?? otpPlan.itineraries[0]
 
-  const from = otpPlan.from
-  const to = otpPlan.to
+  const from = otpPlan.itineraries[0].legs[0].from
+  const lastItinerary = otpPlan.itineraries[otpPlan.itineraries.length - 1]
+  const lastLeg = lastItinerary.legs[lastItinerary.legs.length - 1]
+  const to = lastLeg.to
 
   const carLeg = carItinerary?.legs.find((leg) => leg.mode === 'CAR')
   const legGeometry = carLeg?.legGeometry ?? {
@@ -162,34 +164,29 @@ const buildTaxiItineraries = (otpPlan: Plan, taxiPricing: TaxiPricingApiResponse
   })
 }
 
-// Forward request to OTP as is
-const defaultController = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const otpResponse = await getOtpResult(req)
-    res.send(otpResponse)
-  } catch (error) {
-    res.send(error)
-  }
+const getOtpResult = async (req: GraphQlRequest): Promise<AxiosResponse> => {
+  return await axios({
+    method: req.method,
+    url: `${otpAddress}${req.url}`,
+    data: req.body,
+    headers: req.headers,
+    params: req.query
+  })
 }
 
-app.get('/otp/routers/default/plan', async (req, res) => {
-  if (req.query.mode !== 'TAXI') {
-    await defaultController(req, res)
-    return
-  }
-
-  req.url = req.url.replace('mode=TAXI', 'mode=CAR')
-
-  const fromPlace = getCoordinates(req.query.fromPlace)
-  const toPlace = getCoordinates(req.query.toPlace)
-  const assetTypes = getTaxiAssetTypes(req.query.taxiAssetType)
-
+const handleTaxiRequest = async (req: GraphQlRequest): Promise<PlanResponse | undefined> => {
+  const variables = req.body.variables
+  variables.modes.forEach((transportMode) => {
+    if (transportMode.mode === 'TAXI') {
+      transportMode.mode = 'CAR'
+    }
+  })
+  const fromPlace = getCoordinates(variables.fromPlace)
+  const toPlace = getCoordinates(variables.toPlace)
+  const assetTypes = getTaxiAssetTypes(variables)
   if (fromPlace === undefined || toPlace === undefined) {
-    res.send('fromPlace or toPlace is undefined')
-    res.status(400)
     return
   }
-
   const taxiData: TaxiPricingApiRequest = {
     from: {
       coordinates: fromPlace
@@ -200,20 +197,42 @@ app.get('/otp/routers/default/plan', async (req, res) => {
     useAssetTypes: assetTypes
   }
 
-  await Promise.all([
+  return await Promise.all([
     getTaxiPricing(taxiData),
     getOtpResult(req)
   ]).then((values) => {
     const taxiPricing = values[0]
-    const otpResponse = values[1]
-    const taxiItinaries = buildTaxiItineraries(otpResponse.plan, taxiPricing)
-    otpResponse.plan.itineraries = taxiItinaries
-    res.send(otpResponse)
-  }).catch((error) => {
-    res.send(error)
+    const otpResponse = values[1] as AxiosResponse<PlanResponse>
+    const planResponse = otpResponse.data
+    const taxiItinaries = buildTaxiItineraries(planResponse.data.plan, taxiPricing)
+    planResponse.data.plan.itineraries = taxiItinaries
+    return planResponse
   })
-})
+}
 
-app.get('*', defaultController)
+app.all('*', async (req: GraphQlRequest, res: Response): Promise<void> => {
+  const variables = req.body.variables
+  try {
+    if (variables.modes.some(({ mode }) => mode === 'TAXI')) {
+      const result = await handleTaxiRequest(req)
+      if (result === undefined) {
+        res.status(400)
+        return
+      }
+      res.send(result)
+      res.status(200)
+    } else {
+      const result = await getOtpResult(req)
+      res.status(result.status)
+      res.send(result.data)
+    }
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      res.status(error.response?.status ?? 500)
+    } else {
+      res.status(500)
+    }
+  }
+})
 
 app.listen(3000)
