@@ -1,4 +1,5 @@
 import type { Itinerary, TransportMode, InputBanned } from '@opentripplanner/types'
+import { VehiculeType } from 'driving-costs-calculator'
 
 export * from '@opentripplanner/types'
 
@@ -34,6 +35,9 @@ export interface Variables {
   walkReluctance?: number
   walkSpeed?: number
   wheelchair?: boolean
+
+  vehiculeType: VehiculeType
+  nbKmPerYear: number
 }
 
 export interface ReqBody {
