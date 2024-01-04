@@ -21,7 +21,7 @@ export const handleCarRequest = async (req: GraphQlRequest): Promise<PlanRespons
         currency: {
           code: 'CAD'
         },
-        amount: cost / 100
+        amount: cost
       }
       leg.rideHailingEstimate = {
         provider: {
