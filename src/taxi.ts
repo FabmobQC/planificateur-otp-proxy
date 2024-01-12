@@ -3,7 +3,7 @@ import dayjs from 'dayjs'
 // @ts-expect-error polyline does not have a declaration file
 import polyline from '@mapbox/polyline'
 
-import { type PlanResponse, type Itinerary, type Plan, type Variables } from '../types/otp'
+import { type FabMobPlanResponse, type FabMobPlan, type FabMobVariables, type FabMobItinerary } from '../types/fabmob-otp'
 import { taxiApiKey } from './config.js'
 import { getOtpResult, type GraphQlRequest } from './otp.js'
 
@@ -16,7 +16,7 @@ const getTaxiPricing = async (data: TaxiPricingApiRequest): Promise<TaxiPricingA
   return response.data
 }
 
-const getTaxiAssetTypes = (variables: Variables): TaxiAssetType[] => {
+const getTaxiAssetTypes = (variables: FabMobVariables): TaxiAssetType[] => {
   const assetTypes: TaxiAssetType[] = []
   Object.entries(variables).forEach(([key, value]) => {
     if (key === 'taxiStandard' && value === true) {
@@ -45,7 +45,7 @@ const getCoordinates = (param: unknown): GofsCoordinates | undefined => {
   }
 }
 
-const buildTaxiItineraries = (otpPlan: Plan, taxiPricing: TaxiPricingApiResponse): Itinerary[] => {
+const buildTaxiItineraries = (otpPlan: FabMobPlan, taxiPricing: TaxiPricingApiResponse): FabMobItinerary[] => {
   const carItinerary = otpPlan.itineraries.find((itinerary) => itinerary.legs.find((leg) => leg.mode === 'CAR'))
   const baseItinerary = carItinerary ?? otpPlan.itineraries[0]
 
@@ -64,7 +64,7 @@ const buildTaxiItineraries = (otpPlan: Plan, taxiPricing: TaxiPricingApiResponse
     const startTime = dayjs(option.departureTime).valueOf()
     const endTime = dayjs(option.arrivalTime).valueOf()
 
-    return {
+    const itinerary: FabMobItinerary = {
       duration: option.estimatedTravelTime ?? 0,
       startTime,
       endTime,
@@ -84,7 +84,6 @@ const buildTaxiItineraries = (otpPlan: Plan, taxiPricing: TaxiPricingApiResponse
         duration: option.estimatedTravelTime ?? 0,
         endTime,
         from,
-        hailedCar: true,
         interlineWithPreviousLeg: false,
         intermediateStops: [],
         legGeometry,
@@ -106,16 +105,6 @@ const buildTaxiItineraries = (otpPlan: Plan, taxiPricing: TaxiPricingApiResponse
           stayOn: false,
           streetName: ''
         }],
-        tncData: {
-          company: option.booking.agency.name,
-          currency: option.pricing.parts[0].currencyCode,
-          displayName: option.booking.agency.name,
-          estimatedArrival: endTime,
-          maxCost: option.pricing.parts[0].amount,
-          minCost: option.pricing.parts[0].amount,
-          productId: option.mainAssetType.id,
-          travelDuration: option.estimatedTravelTime ?? 0
-        },
         to,
         transitLeg: false
       }],
@@ -127,24 +116,13 @@ const buildTaxiItineraries = (otpPlan: Plan, taxiPricing: TaxiPricingApiResponse
       walkDistance: 0,
       walkLimitExceeded: false,
       walkTime: 0,
-      fare: {
-        fare: {
-          regular: {
-            cents: option.pricing.parts[0].amount * 100, // OTP expects cents
-            currency: {
-              currency: option.pricing.parts[0].currencyCode,
-              defaultFractionDigits: 2,
-              currencyCode: option.pricing.parts[0].currencyCode,
-              symbol: '$'
-            }
-          }
-        }
-      }
+      taxiPricing: option
     }
+    return itinerary
   })
 }
 
-export const handleTaxiRequest = async (req: GraphQlRequest): Promise<PlanResponse | undefined> => {
+export const handleTaxiRequest = async (req: GraphQlRequest): Promise<FabMobPlanResponse | undefined> => {
   const variables = req.body.variables
   variables.modes.forEach((transportMode) => {
     if (transportMode.mode === 'TAXI') {
@@ -172,7 +150,7 @@ export const handleTaxiRequest = async (req: GraphQlRequest): Promise<PlanRespon
     getOtpResult(req)
   ]).then((values) => {
     const taxiPricing = values[0]
-    const otpResponse = values[1] as AxiosResponse<PlanResponse>
+    const otpResponse = values[1] as AxiosResponse<FabMobPlanResponse>
     const planResponse = otpResponse.data
     const taxiItinaries = buildTaxiItineraries(planResponse.data.plan, taxiPricing)
     planResponse.data.plan.itineraries = taxiItinaries

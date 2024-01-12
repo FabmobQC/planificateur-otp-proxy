@@ -1,26 +1,31 @@
 import type { Itinerary, TransportMode, InputBanned } from '@opentripplanner/types'
-import { VehiculeType } from 'driving-costs-calculator'
+import { type VehiculeType } from 'driving-costs-calculator'
 
 export * from '@opentripplanner/types'
 
-export interface OtpError {
+export interface FabMobOtpError {
   code: string
   description: string
   inputField: unknown
 }
 
-export interface Plan {
-  itineraries: Itinerary[]
-  routingErrors: OtpError[]
+export interface FabMobItinerary extends Itinerary {
+  taxiPricing?: TaxiPricingApiResponseOption
+  drivingCosts?: number
 }
 
-export interface PlanResponse {
+export interface FabMobPlan {
+  itineraries: FabMobItinerary[]
+  routingErrors: FabMobOtpError[]
+}
+
+export interface FabMobPlanResponse {
   data: {
-    plan: Plan
+    plan: FabMobPlan
   }
 }
 
-export interface Variables {
+export interface FabMobVariables {
   arriveBy: boolean
   banned?: InputBanned
   bikeReluctance?: number
@@ -42,5 +47,5 @@ export interface Variables {
 
 export interface ReqBody {
   query: string
-  variables: Variables
+  variables: FabMobVariables
 }

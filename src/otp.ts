@@ -1,7 +1,7 @@
 import axios, { type AxiosResponse } from 'axios'
 import type { Request } from 'express'
 
-import type { ReqBody } from '../types/otp'
+import type { ReqBody } from '../types/fabmob-otp'
 import { otpAddress } from './config.js'
 
 export type GraphQlRequest = Request<unknown, unknown, ReqBody>
