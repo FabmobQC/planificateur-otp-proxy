@@ -6,6 +6,7 @@ import express, { type Response } from 'express'
 import { getOtpResult, type GraphQlRequest } from './otp.js'
 import { handleTaxiRequest } from './taxi.js'
 import { handleCarRequest } from './car.js'
+import { handleTransitRequest } from './transit.js'
 
 const app = express()
 app.use(cors())
@@ -23,6 +24,9 @@ app.all('*', async (req: GraphQlRequest, res: Response): Promise<void> => {
       res.send(result)
     } else if (variables.modes.some(({ mode }) => mode === 'CAR')) {
       const result = await handleCarRequest(req)
+      res.send(result)
+    } else if (variables.modes.some(({ mode }) => mode === 'BUS' || mode === 'SUBWAY')) {
+      const result = await handleTransitRequest(req)
       res.send(result)
     } else {
       const result = await getOtpResult(req)

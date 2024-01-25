@@ -12,6 +12,7 @@ export interface FabMobOtpError {
 export interface FabMobItinerary extends Itinerary {
   taxiPricing?: TaxiPricingApiResponseOption
   drivingCosts?: number
+  transitFare?: number
 }
 
 export interface FabMobPlan {

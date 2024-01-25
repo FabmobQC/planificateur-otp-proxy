@@ -9,6 +9,8 @@
   },
   "dependencies": {
     "@mapbox/polyline": "^1.2.0",
+    "@turf/boolean-point-in-polygon": "^6.5.0",
+    "@turf/helpers": "^6.5.0",
     "axios": "^1.4.0",
     "cors": "^2.8.5",
     "dayjs": "^1.11.7",
