@@ -10,6 +10,7 @@ const artmFare = 3.75
 const artmFareAB = 4.50
 const artmFareABC = 6.75
 const artmFareABCD = 9.25
+const stmLine747Fare = 11.00
 const rtcFare = 3.40
 const stsFare = 3.50
 
@@ -48,6 +49,10 @@ const checkIsSts = (itinerary: FabMobItinerary): boolean => {
 }
 
 const handleArtmFare = (itinerary: FabMobItinerary): void => {
+  if (checkIsStmLine747(itinerary)) {
+    itinerary.transitFare = stmLine747Fare
+    return
+  }
   const artmFareZonesNames = findArtmFareZonesNames(itinerary)
   // order is important
   if (artmFareZonesNames.size === 1) {
@@ -58,7 +63,16 @@ const handleArtmFare = (itinerary: FabMobItinerary): void => {
     itinerary.transitFare = artmFareABC
   } else if (artmFareZonesNames.has('A') && artmFareZonesNames.has('B')) {
     itinerary.transitFare = artmFareAB
+  } else if (artmFareZonesNames.size === 2 && artmFareZonesNames.has('C') && artmFareZonesNames.has('D')) {
+    itinerary.transitFare = artmFare
   }
+}
+
+const checkIsStmLine747 = (itinerary: FabMobItinerary): boolean => {
+  // The leg typing is currently incorrect
+  return itinerary.legs.some(
+    (leg: any) => leg.agency?.name === 'Société de transport de Montréal' && (leg.headsign === '747-E' || leg.headsign === '747-O')
+  )
 }
 
 const findArtmFareZonesNames = (itinerary: FabMobItinerary): Set<ArtmFareZoneName> => {
