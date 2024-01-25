@@ -6,11 +6,12 @@ import { type FabMobItinerary, type FabMobPlanResponse, type Place } from '../ty
 import { loadJsonFile } from './file-tools.js'
 import { getOtpResult, type GraphQlRequest } from './otp.js'
 
-const rtcFare = 3.40
 const artmFare = 3.75
 const artmFareAB = 4.50
 const artmFareABC = 6.75
 const artmFareABCD = 9.25
+const rtcFare = 3.40
+const stsFare = 3.50
 
 type ArtmFareZoneName = 'A' | 'B' | 'C' | 'D'
 
@@ -26,7 +27,9 @@ export const handleTransitRequest = async (req: GraphQlRequest): Promise<FabMobP
   const planResponse = otpResult.data
   planResponse.data.plan.itineraries.forEach((itinerary) => {
     if (checkIsRtc(itinerary)) {
-      handleRtlFare(itinerary)
+      itinerary.transitFare = rtcFare
+    } else if (checkIsSts(itinerary)) {
+      itinerary.transitFare = stsFare
     } else {
       handleArtmFare(itinerary)
     }
@@ -39,8 +42,9 @@ const checkIsRtc = (itinerary: FabMobItinerary): boolean => {
   return itinerary.legs.some((leg: any) => leg.agency?.name === 'Réseau de transport de la capitale (RTC)')
 }
 
-const handleRtlFare = (itinerary: FabMobItinerary): void => {
-  itinerary.transitFare = rtcFare
+const checkIsSts = (itinerary: FabMobItinerary): boolean => {
+  // The leg typing is currently incorrect
+  return itinerary.legs.some((leg: any) => leg.agency?.name === 'Société de Transport de Sherbrooke')
 }
 
 const handleArtmFare = (itinerary: FabMobItinerary): void => {
