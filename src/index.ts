@@ -7,10 +7,16 @@ import { getOtpResult, type GraphQlRequest } from './otp.js'
 import { handleTaxiRequest } from './taxi.js'
 import { handleCarRequest } from './car.js'
 import { handleTransitRequest } from './transit.js'
+import { handleTouristicPlacesRequest } from './touristic-places.js'
 
 const app = express()
 app.use(cors())
 app.use(express.json())
+
+app.get('/touristic-places', async (req: unknown, res: Response): Promise<void> => {
+  const touristicPlaces = await handleTouristicPlacesRequest(req)
+  res.send(JSON.stringify({ touristicPlaces }))
+})
 
 app.all('*', async (req: GraphQlRequest, res: Response): Promise<void> => {
   const variables = req.body.variables
