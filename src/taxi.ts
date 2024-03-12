@@ -124,7 +124,7 @@ const buildTaxiItineraries = (otpPlan: FabMobPlan, taxiPricing: TaxiPricingApiRe
 
 export const handleTaxiRequest = async (req: GraphQlRequest): Promise<FabMobPlanResponse | undefined> => {
   const variables = req.body.variables
-  variables.modes.forEach((transportMode) => {
+  variables.modes?.forEach((transportMode) => {
     if (transportMode.mode === 'TAXI') {
       transportMode.mode = 'CAR'
     }

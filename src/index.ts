@@ -21,17 +21,17 @@ app.get('/touristic-places', async (req: unknown, res: Response): Promise<void> 
 app.all('*', async (req: GraphQlRequest, res: Response): Promise<void> => {
   const variables = req.body.variables
   try {
-    if (variables.modes.some(({ mode }) => mode === 'TAXI')) {
+    if (variables.modes?.some(({ mode }) => mode === 'TAXI') === true) {
       const result = await handleTaxiRequest(req)
       if (result === undefined) {
         res.status(400)
         return
       }
       res.send(result)
-    } else if (variables.modes.some(({ mode }) => mode === 'CAR')) {
+    } else if (variables.modes?.some(({ mode }) => mode === 'CAR') === true) {
       const result = await handleCarRequest(req)
       res.send(result)
-    } else if (variables.modes.some(({ mode }) => mode === 'BUS' || mode === 'SUBWAY')) {
+    } else if (variables.modes?.some(({ mode }) => mode === 'BUS' || mode === 'SUBWAY') === true) {
       const result = await handleTransitRequest(req)
       res.send(result)
     } else {
@@ -40,6 +40,7 @@ app.all('*', async (req: GraphQlRequest, res: Response): Promise<void> => {
       res.send(result.data)
     }
   } catch (error) {
+    console.error(error)
     if (axios.isAxiosError(error)) {
       res.status(error.response?.status ?? 500)
     } else {

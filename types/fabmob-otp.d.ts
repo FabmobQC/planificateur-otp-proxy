@@ -27,24 +27,24 @@ export interface FabMobPlanResponse {
 }
 
 export interface FabMobVariables {
-  arriveBy: boolean
+  arriveBy?: boolean
   banned?: InputBanned
   bikeReluctance?: number
   carReluctance?: number
-  date: string
-  fromPlace: string
-  modes: TransportMode[]
+  date?: string
+  fromPlace?: string
+  modes?: TransportMode[]
   numItineraries?: number
   preferred?: InputPreferred
   time?: string
-  toPlace: string
+  toPlace?: string
   walkReluctance?: number
   walkSpeed?: number
   wheelchair?: boolean
 
-  vehiculeType: VehiculeType
-  nbKmPerYear: number
-  paidParkingTime: number
+  vehiculeType?: VehiculeType
+  nbKmPerYear?: number
+  paidParkingTime?: number
 }
 
 export interface ReqBody {
