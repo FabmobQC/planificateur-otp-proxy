@@ -42,7 +42,8 @@ app.all('*', async (req: GraphQlRequest, res: Response): Promise<void> => {
   } catch (error) {
     console.error(error)
     if (axios.isAxiosError(error)) {
-      res.status(error.response?.status ?? 500)
+      const response = error.response
+      res.status(response?.status ?? 500).send(response?.data)
     } else {
       res.status(500)
     }
