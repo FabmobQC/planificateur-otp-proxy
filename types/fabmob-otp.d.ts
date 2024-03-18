@@ -45,6 +45,7 @@ export interface FabMobVariables {
   vehiculeType?: VehiculeType
   nbKmPerYear?: number
   paidParkingTime?: number
+  searchWindow?: number
 }
 
 export interface ReqBody {

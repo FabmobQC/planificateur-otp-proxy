@@ -11,7 +11,10 @@ export const getOtpResult = async (req: GraphQlRequest): Promise<AxiosResponse> 
     method: req.method,
     url: `${otpAddress}${req.url}`,
     data: req.body,
-    headers: req.headers,
+    headers: {
+      ...req.headers,
+      'content-length': undefined // This property would make the request fail if it has been modified.
+    },
     params: req.query
   })
 }

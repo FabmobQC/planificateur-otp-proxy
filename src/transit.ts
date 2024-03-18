@@ -24,6 +24,7 @@ const artmFareZones = new Map<ArtmFareZoneName, ArtmFareZone>([
 ])
 
 export const handleTransitRequest = async (req: GraphQlRequest): Promise<FabMobPlanResponse> => {
+  setSearchWindow(req)
   const otpResult = await getOtpResult(req) as AxiosResponse<FabMobPlanResponse>
   const planResponse = otpResult.data
   planResponse.data.plan.itineraries.forEach((itinerary) => {
@@ -36,6 +37,14 @@ export const handleTransitRequest = async (req: GraphQlRequest): Promise<FabMobP
     }
   })
   return planResponse
+}
+
+const setSearchWindow = (req: GraphQlRequest): void => {
+  const oldQuery = req.body.query
+  const searchWindowValue = 24 * 60 * 60 // 24 hours in seconds
+  // Unfortunately, it seems there's no tool to modify a GraphQL query
+  const newQuery = oldQuery.replace('plan(', `plan(\nsearchWindow: ${searchWindowValue}`)
+  req.body.query = newQuery
 }
 
 const checkIsRtc = (itinerary: FabMobItinerary): boolean => {
