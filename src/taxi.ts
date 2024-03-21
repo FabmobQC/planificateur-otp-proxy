@@ -6,6 +6,7 @@ import polyline from '@mapbox/polyline'
 import { type FabMobPlanResponse, type FabMobPlan, type FabMobVariables, type FabMobItinerary } from '../types/fabmob-otp'
 import { taxiApiKey } from './config.js'
 import { getOtpResult, type GraphQlRequest } from './otp.js'
+import { handleMultipleStops } from './multiple-stops.js'
 
 const getTaxiPricing = async (data: TaxiPricingApiRequest): Promise<TaxiPricingApiResponse> => {
   const response = await axios.post('https://taximtl.ville.montreal.qc.ca/api/inquiry', data, {
@@ -156,4 +157,8 @@ export const handleTaxiRequest = async (req: GraphQlRequest): Promise<FabMobPlan
     planResponse.data.plan.itineraries = taxiItinaries
     return planResponse
   })
+}
+
+export const handleTaxiRequestWithMultipleStops = async (req: GraphQlRequest): Promise<FabMobPlanResponse | undefined> => {
+  return await handleMultipleStops(req, handleTaxiRequest)
 }

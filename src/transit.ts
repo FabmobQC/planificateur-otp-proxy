@@ -5,6 +5,7 @@ import { type ArtmFareZone } from '../transit_fare_zones/transit-fare-zone.js'
 import { type FabMobItinerary, type FabMobPlanResponse, type Place } from '../types/fabmob-otp.js'
 import { loadJsonFile } from './file-tools.js'
 import { getOtpResult, type GraphQlRequest } from './otp.js'
+import { handleMultipleStops } from './multiple-stops.js'
 
 const artmFare = 3.75
 const artmFareAB = 4.50
@@ -22,6 +23,10 @@ const artmFareZones = new Map<ArtmFareZoneName, ArtmFareZone>([
   ['C', loadJsonFile('transit_fare_zones/artm_zone_c.geojson') as unknown as ArtmFareZone],
   ['D', loadJsonFile('transit_fare_zones/artm_zone_d.geojson') as unknown as ArtmFareZone]
 ])
+
+export const handleTransitRequestWithMultipleStops = async (req: GraphQlRequest): Promise<FabMobPlanResponse | undefined> => {
+  return await handleMultipleStops(req, handleTransitRequest)
+}
 
 export const handleTransitRequest = async (req: GraphQlRequest): Promise<FabMobPlanResponse> => {
   setSearchWindow(req)

@@ -4,10 +4,11 @@ import cors from 'cors'
 import express, { type Response } from 'express'
 
 import { getOtpResult, type GraphQlRequest } from './otp.js'
-import { handleTaxiRequest } from './taxi.js'
-import { handleCarRequest } from './car.js'
-import { handleTransitRequest } from './transit.js'
+import { handleTaxiRequestWithMultipleStops } from './taxi.js'
+import { handleCarRequestWithMultipleStops } from './car.js'
+import { handleTransitRequestWithMultipleStops } from './transit.js'
 import { handleTouristicPlacesRequest } from './touristic-places.js'
+import { handleMultipleStops } from './multiple-stops.js'
 
 const app = express()
 app.use(cors())
@@ -22,17 +23,24 @@ app.all('*', async (req: GraphQlRequest, res: Response): Promise<void> => {
   const variables = req.body.variables
   try {
     if (variables.modes?.some(({ mode }) => mode === 'TAXI') === true) {
-      const result = await handleTaxiRequest(req)
+      const result = await handleTaxiRequestWithMultipleStops(req)
       if (result === undefined) {
         res.status(400)
         return
       }
       res.send(result)
     } else if (variables.modes?.some(({ mode }) => mode === 'CAR') === true) {
-      const result = await handleCarRequest(req)
+      const result = await handleCarRequestWithMultipleStops(req)
+      res.send(result)
+    } else if (variables.modes?.some(({ mode }) => mode === 'BICYCLE') === true) {
+      const result = await handleMultipleStops(req, async (req) => (await getOtpResult(req)).data)
+      if (result === undefined) {
+        res.status(400)
+        return
+      }
       res.send(result)
     } else if (variables.modes?.some(({ mode }) => mode === 'BUS' || mode === 'SUBWAY') === true) {
-      const result = await handleTransitRequest(req)
+      const result = await handleTransitRequestWithMultipleStops(req)
       res.send(result)
     } else {
       const result = await getOtpResult(req)
