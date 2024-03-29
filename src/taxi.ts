@@ -46,7 +46,14 @@ const getCoordinates = (param: unknown): GofsCoordinates | undefined => {
   }
 }
 
-const buildTaxiItineraries = (otpPlan: FabMobPlan, taxiPricing: TaxiPricingApiResponse): FabMobItinerary[] => {
+const getRequestedStartTime = (variables: FabMobVariables): number => {
+  if (variables.date === undefined || variables.time === undefined) {
+    return 0
+  }
+  return dayjs(`${variables.date}T${variables.time}`).valueOf()
+}
+
+const buildTaxiItineraries = (otpPlan: FabMobPlan, taxiPricing: TaxiPricingApiResponse, variables: FabMobVariables): FabMobItinerary[] => {
   const carItinerary = otpPlan.itineraries.find((itinerary) => itinerary.legs.find((leg) => leg.mode === 'CAR'))
   const baseItinerary = carItinerary ?? otpPlan.itineraries[0]
 
@@ -61,9 +68,15 @@ const buildTaxiItineraries = (otpPlan: FabMobPlan, taxiPricing: TaxiPricingApiRe
     length: 2
   }
 
+  const requestedStartTime = getRequestedStartTime(variables)
+
   return taxiPricing.options.map((option) => {
-    const startTime = dayjs(option.departureTime).valueOf()
-    const endTime = dayjs(option.arrivalTime).valueOf()
+    const receivedStartTime = dayjs(option.departureTime).valueOf()
+    const receivedEndTime = dayjs(option.arrivalTime).valueOf()
+    const offset = receivedEndTime - receivedStartTime
+
+    const startTime = Math.max(receivedStartTime, requestedStartTime)
+    const endTime = startTime + offset
 
     const itinerary: FabMobItinerary = {
       duration: option.estimatedTravelTime ?? 0,
@@ -153,7 +166,7 @@ export const handleTaxiRequest = async (req: GraphQlRequest): Promise<FabMobPlan
     const taxiPricing = values[0]
     const otpResponse = values[1] as AxiosResponse<FabMobPlanResponse>
     const planResponse = otpResponse.data
-    const taxiItinaries = buildTaxiItineraries(planResponse.data.plan, taxiPricing)
+    const taxiItinaries = buildTaxiItineraries(planResponse.data.plan, taxiPricing, variables)
     planResponse.data.plan.itineraries = taxiItinaries
     return planResponse
   })
