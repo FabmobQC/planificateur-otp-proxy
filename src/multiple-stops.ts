@@ -1,4 +1,5 @@
-import { type FabMobPlanResponse } from '../types/fabmob-otp'
+import dayjs from 'dayjs'
+import { type FabMobVariables, type FabMobPlanResponse, type FabMobItinerary } from '../types/fabmob-otp'
 import { type GraphQlRequest } from './otp'
 
 function additionFields <T extends boolean | undefined> (a: T, b: T): T
@@ -91,6 +92,16 @@ export const fusionResponses = (responses: FabMobPlanResponse[]): FabMobPlanResp
   }, responses[0])
 }
 
+const getDeparture = (currentVars: FabMobVariables, itinerary: FabMobItinerary | undefined): { date: string, time: string } => {
+  if (itinerary === undefined) {
+    return { date: currentVars.date ?? '', time: currentVars.time ?? '' }
+  }
+  const dayjsTime = dayjs(itinerary.endTime)
+  const date = dayjsTime.format('YYYY-MM-DD')
+  const time = dayjsTime.format('HH:mm')
+  return { date, time }
+}
+
 type ModeHandler = (req: GraphQlRequest) => Promise<FabMobPlanResponse | undefined>
 
 export const handleMultipleStops = async (req: GraphQlRequest, modeHandler: ModeHandler): Promise<FabMobPlanResponse | undefined> => {
@@ -109,6 +120,7 @@ export const handleMultipleStops = async (req: GraphQlRequest, modeHandler: Mode
         ...req.body,
         variables: {
           ...req.body.variables,
+          ...getDeparture(req.body.variables, responses[responses.length - 1]?.data.plan.itineraries[0]),
           fromPlace: places[i],
           toPlace: places[i + 1]
         }
