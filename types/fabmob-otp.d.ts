@@ -47,6 +47,7 @@ export interface FabMobVariables {
   paidParkingTime?: number
   searchWindow?: number
   additionalPlaces?: Place[]
+  additionalPlacesWaitingTimes?: number[] // in hours
 }
 
 export interface ReqBody {

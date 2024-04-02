@@ -92,11 +92,16 @@ export const fusionResponses = (responses: FabMobPlanResponse[]): FabMobPlanResp
   }, responses[0])
 }
 
-const getDeparture = (currentVars: FabMobVariables, itinerary: FabMobItinerary | undefined): { date: string, time: string } => {
-  if (itinerary === undefined) {
+const getDeparture = (
+  currentVars: FabMobVariables,
+  previousItinerary: FabMobItinerary | undefined,
+  delayInHours: number = 0
+): { date: string, time: string } => {
+  if (previousItinerary === undefined) {
     return { date: currentVars.date ?? '', time: currentVars.time ?? '' }
   }
-  const dayjsTime = dayjs(itinerary.endTime)
+  const delayInMicroseconds = delayInHours * 60 * 60 * 1000
+  const dayjsTime = dayjs(previousItinerary.endTime + delayInMicroseconds)
   const date = dayjsTime.format('YYYY-MM-DD')
   const time = dayjsTime.format('HH:mm')
   return { date, time }
@@ -111,16 +116,22 @@ export const handleMultipleStops = async (req: GraphQlRequest, modeHandler: Mode
     ...(req.body.variables.additionalPlaces ?? [])
   ]
 
-  const responses: FabMobPlanResponse[] = []
+  const delays = [
+    0,
+    ...(req.body.variables.additionalPlacesWaitingTimes ?? [])
+  ]
 
+  const responses: FabMobPlanResponse[] = []
   for (let i = 0; i < places.length - 1; i++) {
+    const delay = delays[i]
+    const previousItinerary = responses[responses.length - 1]?.data.plan.itineraries[0]
     const newReq = {
       ...req,
       body: {
         ...req.body,
         variables: {
           ...req.body.variables,
-          ...getDeparture(req.body.variables, responses[responses.length - 1]?.data.plan.itineraries[0]),
+          ...getDeparture(req.body.variables, previousItinerary, delay),
           fromPlace: places[i],
           toPlace: places[i + 1]
         }
