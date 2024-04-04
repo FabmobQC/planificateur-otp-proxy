@@ -61,7 +61,7 @@ export const fusionResponses = (responses: FabMobPlanResponse[]): FabMobPlanResp
               ...accItinerary,
               co2: additionFields(accItinerary.co2, otherItinerary.co2),
               co2VsBaseline: additionFields(accItinerary.co2VsBaseline, otherItinerary.co2VsBaseline),
-              duration: additionFields(accItinerary.duration, otherItinerary.duration),
+              duration: (otherItinerary.endTime - accItinerary.startTime) / 1000,
               elevationGained: additionFields(accItinerary.elevationGained, otherItinerary.elevationGained),
               elevationLost: additionFields(accItinerary.elevationLost, otherItinerary.elevationLost),
               endTime: additionFields(accItinerary.endTime, otherItinerary.endTime),
