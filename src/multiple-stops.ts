@@ -90,12 +90,12 @@ export const fusionItineraries = (
       duration: (otherItinerary.endTime - acc.startTime) / 1000,
       elevationGained: additionFields(acc.elevationGained, otherItinerary.elevationGained),
       elevationLost: additionFields(acc.elevationLost, otherItinerary.elevationLost),
-      endTime: additionFields(acc.endTime, otherItinerary.endTime),
+      endTime: otherItinerary.endTime,
       legs: [
         ...acc.legs,
         ...otherItinerary.legs
       ],
-      startTime: additionFields(acc.startTime, otherItinerary.startTime),
+      startTime: acc.startTime,
       tooSloped: additionFields(acc.tooSloped, otherItinerary.tooSloped),
       transfers: additionFields(acc.transfers, otherItinerary.transfers),
       transitTime: additionFields(acc.transitTime, otherItinerary.transitTime),
