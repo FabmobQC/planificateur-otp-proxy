@@ -128,9 +128,7 @@ const getDeparture = (
 type ModeHandler = (req: GraphQlRequest) => Promise<FabMobPlanResponse | undefined>
 
 const defaultItinerarySelectors: ItinerarySelector[] = [
-  itineraries => itineraries[0],
-  itineraries => itineraries[1],
-  itineraries => itineraries[2]
+  itineraries => itineraries[0]
 ]
 
 export const handleMultipleStops = async (
@@ -152,7 +150,8 @@ export const handleMultipleStops = async (
   const responses: FabMobPlanResponse[] = []
   for (let i = 0; i < places.length - 1; i++) {
     const delay = delays[i]
-    const previousItinerary = responses[responses.length - 1]?.data.plan.itineraries[0]
+    const previousResponse = responses.at(responses.length - 1)
+    const previousItinerary = (previousResponse !== undefined) ? itinerarySelectors[0](previousResponse.data.plan.itineraries) : undefined
     const newReq = {
       ...req,
       body: {

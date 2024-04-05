@@ -24,8 +24,15 @@ const artmFareZones = new Map<ArtmFareZoneName, ArtmFareZone>([
   ['D', loadJsonFile('transit_fare_zones/artm_zone_d.geojson') as unknown as ArtmFareZone]
 ])
 
+const noWalkItinerarySelector = (itineraries: FabMobItinerary[]): FabMobItinerary => {
+  // We usually (always?) receive one itinerary that is made entirely on walking
+  return itineraries.find(
+    (itinerary) => !itinerary.legs.every(leg => leg.mode === 'WALK')
+  ) ?? itineraries[0]
+}
+
 export const handleTransitRequestWithMultipleStops = async (req: GraphQlRequest): Promise<FabMobPlanResponse | undefined> => {
-  return await handleMultipleStops(req, handleTransitRequest)
+  return await handleMultipleStops(req, handleTransitRequest, [noWalkItinerarySelector])
 }
 
 export const handleTransitRequest = async (req: GraphQlRequest): Promise<FabMobPlanResponse> => {
