@@ -5,7 +5,7 @@ interface TaxiPricingApiRequest extends GofsPricingApiRequest {
   useAssetTypes: TaxiAssetType[]
 }
 
-interface TaxiPricingApiResponseOption extends GofsPrincingApiResponseOption {
+interface TaxiPricingApiResponseOption extends GofsPricingApiResponseOption {
   estimatedWaitTime: number
   estimatedTravelTime?: number
   booking: {

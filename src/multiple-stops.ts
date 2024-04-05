@@ -19,7 +19,7 @@ function additionFields (a: boolean | number | undefined, b: boolean | number | 
   }
 }
 
-const concatTaxiPrincing = (a?: TaxiPricingApiResponseOption, b?: TaxiPricingApiResponseOption): TaxiPricingApiResponseOption | undefined => {
+const concatTaxiPricing = (a?: TaxiPricingApiResponseOption, b?: TaxiPricingApiResponseOption): TaxiPricingApiResponseOption | undefined => {
   if (a === undefined) {
     return b
   }
@@ -77,7 +77,7 @@ export const fusionResponses = (responses: FabMobPlanResponse[]): FabMobPlanResp
               walkDistance: additionFields(accItinerary.walkDistance, otherItinerary.walkDistance),
               walkLimitExceeded: additionFields(accItinerary.walkLimitExceeded, otherItinerary.walkLimitExceeded),
               walkTime: additionFields(accItinerary.walkTime, otherItinerary.walkTime),
-              taxiPricing: concatTaxiPrincing(accItinerary.taxiPricing, otherItinerary.taxiPricing),
+              taxiPricing: concatTaxiPricing(accItinerary.taxiPricing, otherItinerary.taxiPricing),
               drivingCosts: additionFields(accItinerary.drivingCosts, otherItinerary.drivingCosts),
               transitFare: additionFields(accItinerary.transitFare, otherItinerary.transitFare)
             }

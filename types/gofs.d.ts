@@ -22,7 +22,7 @@ interface GofsPricingApiRequest {
   userGroups?: string[]
 }
 
-interface GofsPrincingApiResponseOption {
+interface GofsPricingApiResponseOption {
   mainAssetType: {
     id: string
   }
@@ -49,5 +49,5 @@ interface GofsPrincingApiResponseOption {
 
 interface GofsPricingApiResponse {
   validUntil: string
-  options: GofsPrincingApiResponseOption[]
+  options: GofsPricingApiResponseOption[]
 }
