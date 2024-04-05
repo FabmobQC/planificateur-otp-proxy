@@ -120,8 +120,8 @@ const getDeparture = (
   }
   const delayInMicroseconds = delayInHours * 60 * 60 * 1000
   const dayjsTime = dayjs(previousItinerary.endTime + delayInMicroseconds)
-  const date = dayjsTime.format('YYYY-MM-DD')
-  const time = dayjsTime.format('HH:mm')
+  const date = dayjsTime.tz().format('YYYY-MM-DD')
+  const time = dayjsTime.tz().format('HH:mm')
   return { date, time }
 }
 

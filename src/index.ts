@@ -1,5 +1,8 @@
 /* eslint-disable @typescript-eslint/no-misused-promises */
 import axios from 'axios'
+import dayjs from 'dayjs'
+import utc from 'dayjs/plugin/utc.js'
+import timezone from 'dayjs/plugin/timezone.js'
 import cors from 'cors'
 import express, { type Response } from 'express'
 
@@ -9,6 +12,10 @@ import { handleCarRequestWithMultipleStops } from './car.js'
 import { handleTransitRequestWithMultipleStops } from './transit.js'
 import { handleTouristicPlacesRequest } from './touristic-places.js'
 import { handleMultipleStops } from './multiple-stops.js'
+
+dayjs.extend(utc)
+dayjs.extend(timezone)
+dayjs.tz.setDefault('America/Montreal')
 
 const app = express()
 app.use(cors())

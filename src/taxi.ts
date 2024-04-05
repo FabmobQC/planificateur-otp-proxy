@@ -50,7 +50,7 @@ const getRequestedStartTime = (variables: FabMobVariables): number => {
   if (variables.date === undefined || variables.time === undefined) {
     return 0
   }
-  return dayjs(`${variables.date}T${variables.time}`).valueOf()
+  return dayjs.tz(`${variables.date}T${variables.time}`).valueOf()
 }
 
 const buildTaxiItineraries = (otpPlan: FabMobPlan, taxiPricing: TaxiPricingApiResponse, variables: FabMobVariables): FabMobItinerary[] => {
@@ -71,8 +71,8 @@ const buildTaxiItineraries = (otpPlan: FabMobPlan, taxiPricing: TaxiPricingApiRe
   const requestedStartTime = getRequestedStartTime(variables)
 
   return taxiPricing.options.map((option) => {
-    const receivedStartTime = dayjs(option.departureTime).valueOf()
-    const receivedEndTime = dayjs(option.arrivalTime).valueOf()
+    const receivedStartTime = dayjs.tz(option.departureTime).valueOf()
+    const receivedEndTime = dayjs.tz(option.arrivalTime).valueOf()
     const offset = receivedEndTime - receivedStartTime
 
     const startTime = Math.max(receivedStartTime, requestedStartTime)
