@@ -45,51 +45,69 @@ const concatTaxiPricing = (a?: TaxiPricingApiResponseOption, b?: TaxiPricingApiR
   }
 }
 
-export const fusionResponses = (responses: FabMobPlanResponse[]): FabMobPlanResponse => {
-  return responses.slice(1).reduce<FabMobPlanResponse>((acc, response) => {
-    const accRoutingErrors = acc.data.plan.routingErrors
-    const otherRoutingErrors = response.data.plan.routingErrors
-    const accItinerary = acc.data.plan.itineraries[0]
-    const otherItinerary = response.data.plan.itineraries[0]
+// A response might have several itineraries.
+// An ItinerarySelector is used to select the itineraries that will be merged together when there are multiple stops.
+// For example, we could merge together all the shortest itineraries in time, then the shortest in distances, then the cheapests, etc.
+type ItinerarySelector = (itineraries: FabMobItinerary[]) => FabMobItinerary
+
+export const fusionResponses = (
+  responses: FabMobPlanResponse[],
+  itinerarySelectors: ItinerarySelector[]
+): FabMobPlanResponse => {
+  const responsesItineraries = responses.map(response => response.data.plan.itineraries)
+  const routingErrors = responses.map(response => response.data.plan.routingErrors).flat()
+
+  const nbItineraries = Math.min(...responsesItineraries.map(itineraries => itineraries.length), itinerarySelectors.length)
+
+  const itineraries = itinerarySelectors.slice(0, nbItineraries).reduce<FabMobItinerary[]>((acc, selector) => {
+    acc.push(fusionItineraries(responsesItineraries, selector))
+    return acc
+  }, [])
+
+  return {
+    ...responses[0],
+    data: {
+      plan: {
+        ...responses[0].data.plan,
+        itineraries,
+        routingErrors
+      }
+    }
+  }
+}
+
+export const fusionItineraries = (
+  responsesItineraries: FabMobItinerary[][],
+  selectItinerary: ItinerarySelector
+): FabMobItinerary => {
+  const initialItinerary = selectItinerary(responsesItineraries[0])
+  return responsesItineraries.slice(1).reduce<FabMobItinerary>((acc, responseItineraries) => {
+    const otherItinerary = selectItinerary(responseItineraries)
     return {
       ...acc,
-      data: {
-        plan: {
-          ...acc.data.plan,
-          itineraries: [
-            {
-              ...accItinerary,
-              co2: additionFields(accItinerary.co2, otherItinerary.co2),
-              co2VsBaseline: additionFields(accItinerary.co2VsBaseline, otherItinerary.co2VsBaseline),
-              duration: (otherItinerary.endTime - accItinerary.startTime) / 1000,
-              elevationGained: additionFields(accItinerary.elevationGained, otherItinerary.elevationGained),
-              elevationLost: additionFields(accItinerary.elevationLost, otherItinerary.elevationLost),
-              endTime: additionFields(accItinerary.endTime, otherItinerary.endTime),
-              legs: [
-                ...accItinerary.legs,
-                ...otherItinerary.legs
-              ],
-              startTime: additionFields(accItinerary.startTime, otherItinerary.startTime),
-              tooSloped: additionFields(accItinerary.tooSloped, otherItinerary.tooSloped),
-              transfers: additionFields(accItinerary.transfers, otherItinerary.transfers),
-              transitTime: additionFields(accItinerary.transitTime, otherItinerary.transitTime),
-              waitingTime: additionFields(accItinerary.waitingTime, otherItinerary.waitingTime),
-              walkDistance: additionFields(accItinerary.walkDistance, otherItinerary.walkDistance),
-              walkLimitExceeded: additionFields(accItinerary.walkLimitExceeded, otherItinerary.walkLimitExceeded),
-              walkTime: additionFields(accItinerary.walkTime, otherItinerary.walkTime),
-              taxiPricing: concatTaxiPricing(accItinerary.taxiPricing, otherItinerary.taxiPricing),
-              drivingCosts: additionFields(accItinerary.drivingCosts, otherItinerary.drivingCosts),
-              transitFare: additionFields(accItinerary.transitFare, otherItinerary.transitFare)
-            }
-          ],
-          routingErrors: [
-            ...accRoutingErrors,
-            ...otherRoutingErrors
-          ]
-        }
-      }
-    } satisfies FabMobPlanResponse
-  }, responses[0])
+      co2: additionFields(acc.co2, otherItinerary.co2),
+      co2VsBaseline: additionFields(acc.co2VsBaseline, otherItinerary.co2VsBaseline),
+      duration: (otherItinerary.endTime - acc.startTime) / 1000,
+      elevationGained: additionFields(acc.elevationGained, otherItinerary.elevationGained),
+      elevationLost: additionFields(acc.elevationLost, otherItinerary.elevationLost),
+      endTime: additionFields(acc.endTime, otherItinerary.endTime),
+      legs: [
+        ...acc.legs,
+        ...otherItinerary.legs
+      ],
+      startTime: additionFields(acc.startTime, otherItinerary.startTime),
+      tooSloped: additionFields(acc.tooSloped, otherItinerary.tooSloped),
+      transfers: additionFields(acc.transfers, otherItinerary.transfers),
+      transitTime: additionFields(acc.transitTime, otherItinerary.transitTime),
+      waitingTime: additionFields(acc.waitingTime, otherItinerary.waitingTime),
+      walkDistance: additionFields(acc.walkDistance, otherItinerary.walkDistance),
+      walkLimitExceeded: additionFields(acc.walkLimitExceeded, otherItinerary.walkLimitExceeded),
+      walkTime: additionFields(acc.walkTime, otherItinerary.walkTime),
+      taxiPricing: concatTaxiPricing(acc.taxiPricing, otherItinerary.taxiPricing),
+      drivingCosts: additionFields(acc.drivingCosts, otherItinerary.drivingCosts),
+      transitFare: additionFields(acc.transitFare, otherItinerary.transitFare)
+    } satisfies FabMobItinerary
+  }, initialItinerary)
 }
 
 const getDeparture = (
@@ -109,7 +127,17 @@ const getDeparture = (
 
 type ModeHandler = (req: GraphQlRequest) => Promise<FabMobPlanResponse | undefined>
 
-export const handleMultipleStops = async (req: GraphQlRequest, modeHandler: ModeHandler): Promise<FabMobPlanResponse | undefined> => {
+const defaultItinerarySelectors: ItinerarySelector[] = [
+  itineraries => itineraries[0],
+  itineraries => itineraries[1],
+  itineraries => itineraries[2]
+]
+
+export const handleMultipleStops = async (
+  req: GraphQlRequest,
+  modeHandler: ModeHandler,
+  itinerarySelectors: ItinerarySelector[] = defaultItinerarySelectors
+): Promise<FabMobPlanResponse | undefined> => {
   const places = [
     req.body.variables.fromPlace,
     req.body.variables.toPlace,
@@ -148,5 +176,5 @@ export const handleMultipleStops = async (req: GraphQlRequest, modeHandler: Mode
     }
     responses.push(response)
   }
-  return fusionResponses(responses)
+  return fusionResponses(responses, itinerarySelectors)
 }
