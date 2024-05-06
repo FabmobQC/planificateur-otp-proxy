@@ -1,5 +1,5 @@
 import dayjs from 'dayjs'
-import { type FabMobVariables, type FabMobPlanResponse, type FabMobItinerary } from '../types/fabmob-otp'
+import { type FabMobPlanResponse, type FabMobItinerary, type Leg, type FabMobOtpError, type Place } from '../types/fabmob-otp'
 import { type GraphQlRequest } from './otp'
 
 function additionFields <T extends boolean | undefined> (a: T, b: T): T
@@ -45,44 +45,43 @@ const concatTaxiPricing = (a?: TaxiPricingApiResponseOption, b?: TaxiPricingApiR
   }
 }
 
+const buildStopoverLeg = (legsBefore: Leg[], legsAfter: Leg[]): Leg => {
+  const legBefore = legsBefore.at(legsBefore.length - 1) as Leg
+  const legAfter = legsAfter[0]
+  return {
+    arrivalDelay: 0,
+    agencyTimeZoneOffset: 0,
+    departureDelay: 0,
+    distance: 0,
+    duration: (legAfter.endTime - (legBefore.startTime as number)) / 1000,
+    endTime: legAfter.startTime as number,
+    from: legAfter.from,
+    interlineWithPreviousLeg: false,
+    intermediateStops: [],
+    legGeometry: { length: 0, points: '' },
+    mode: 'STOPOVER',
+    pathway: false,
+    realTime: false,
+    rentedBike: false,
+    rentedCar: false,
+    rentedVehicle: false,
+    startTime: legBefore.endTime,
+    steps: [],
+    to: legAfter.from,
+    transitLeg: false
+  }
+}
+
 // A response might have several itineraries.
 // An ItinerarySelector is used to select the itineraries that will be merged together when there are multiple stops.
 // For example, we could merge together all the shortest itineraries in time, then the shortest in distances, then the cheapests, etc.
 type ItinerarySelector = (itineraries: FabMobItinerary[]) => FabMobItinerary
 
-export const fusionResponses = (
-  responses: FabMobPlanResponse[],
-  itinerarySelectors: ItinerarySelector[]
-): FabMobPlanResponse => {
-  const responsesItineraries = responses.map(response => response.data.plan.itineraries)
-  const routingErrors = responses.map(response => response.data.plan.routingErrors).flat()
-
-  const nbItineraries = Math.min(...responsesItineraries.map(itineraries => itineraries.length), itinerarySelectors.length)
-
-  const itineraries = itinerarySelectors.slice(0, nbItineraries).reduce<FabMobItinerary[]>((acc, selector) => {
-    acc.push(fusionItineraries(responsesItineraries, selector))
-    return acc
-  }, [])
-
-  return {
-    ...responses[0],
-    data: {
-      plan: {
-        ...responses[0].data.plan,
-        itineraries,
-        routingErrors
-      }
-    }
-  }
-}
-
 export const fusionItineraries = (
-  responsesItineraries: FabMobItinerary[][],
-  selectItinerary: ItinerarySelector
+  itineraries: FabMobItinerary[]
 ): FabMobItinerary => {
-  const initialItinerary = selectItinerary(responsesItineraries[0])
-  return responsesItineraries.slice(1).reduce<FabMobItinerary>((acc, responseItineraries) => {
-    const otherItinerary = selectItinerary(responseItineraries)
+  const initialItinerary = itineraries[0]
+  return itineraries.slice(1).reduce<FabMobItinerary>((acc, otherItinerary) => {
     return {
       ...acc,
       co2: additionFields(acc.co2, otherItinerary.co2),
@@ -93,6 +92,7 @@ export const fusionItineraries = (
       endTime: otherItinerary.endTime,
       legs: [
         ...acc.legs,
+        buildStopoverLeg(acc.legs, otherItinerary.legs),
         ...otherItinerary.legs
       ],
       startTime: acc.startTime,
@@ -111,13 +111,9 @@ export const fusionItineraries = (
 }
 
 const getDeparture = (
-  currentVars: FabMobVariables,
-  previousItinerary: FabMobItinerary | undefined,
+  previousItinerary: FabMobItinerary,
   delayInHours: number = 0
 ): { date: string, time: string } => {
-  if (previousItinerary === undefined) {
-    return { date: currentVars.date ?? '', time: currentVars.time ?? '' }
-  }
   const delayInMicroseconds = delayInHours * 60 * 60 * 1000
   const dayjsTime = dayjs(previousItinerary.endTime + delayInMicroseconds)
   const date = dayjsTime.tz().format('YYYY-MM-DD')
@@ -131,49 +127,100 @@ const defaultItinerarySelectors: ItinerarySelector[] = [
   itineraries => itineraries[0]
 ]
 
+type ItineriesWithSelectors = Array<[itinerary: FabMobItinerary, selector: ItinerarySelector]>
+
+const mapItinerariesWithSelectors = (
+  baseItineraries: FabMobItinerary[],
+  itinerarySelectors: ItinerarySelector[]
+): ItineriesWithSelectors => {
+  const nbItineraries = Math.min(baseItineraries.length, itinerarySelectors.length)
+  const result: ItineriesWithSelectors = []
+  itinerarySelectors.slice(0, nbItineraries).forEach((itinerarySelector) => {
+    const itinerary = itinerarySelector(baseItineraries)
+    const itineraries = result.map(([itinerary]) => itinerary)
+    if (!itineraries.includes(itinerary)) {
+      result.push([itinerary, itinerarySelector])
+    }
+  })
+  return result
+}
+
+const encodePlace = (place: Place): string => {
+  return `${place.name}::${place.lat},${place.lon}`
+}
+
 export const handleMultipleStops = async (
   req: GraphQlRequest,
   modeHandler: ModeHandler,
   itinerarySelectors: ItinerarySelector[] = defaultItinerarySelectors
 ): Promise<FabMobPlanResponse | undefined> => {
-  const places = [
-    req.body.variables.fromPlace,
-    req.body.variables.toPlace,
-    ...(req.body.variables.additionalPlaces ?? [])
-  ]
+  const variables = req.body.variables
+  const additionalPlaces = variables.additionalPlaces ?? []
+  const additionalPlacesWaitingTimes = variables.additionalPlacesWaitingTimes ?? []
+  if (additionalPlaces.length !== additionalPlacesWaitingTimes.length) {
+    console.warn('additionalPlaces and additionalPlacesWaitingTimes lengths do not match:', variables)
+    return
+  }
 
-  const delays = [
-    0,
-    ...(req.body.variables.additionalPlacesWaitingTimes ?? [])
-  ]
+  const baseResponse = await modeHandler(req)
 
-  const responses: FabMobPlanResponse[] = []
-  for (let i = 0; i < places.length - 1; i++) {
-    const delay = delays[i]
-    const previousResponse = responses.at(responses.length - 1)
-    const previousItinerary = (previousResponse !== undefined) ? itinerarySelectors[0](previousResponse.data.plan.itineraries) : undefined
-    const newReq = {
-      ...req,
-      body: {
-        ...req.body,
-        variables: {
-          ...req.body.variables,
-          ...getDeparture(req.body.variables, previousItinerary, delay),
-          fromPlace: places[i],
-          toPlace: places[i + 1]
+  if (baseResponse?.data?.plan.itineraries === undefined) {
+    console.warn('No itineraries in base response:', baseResponse)
+    return
+  }
+
+  const itinerariesWithSelectors = mapItinerariesWithSelectors(baseResponse.data.plan.itineraries, itinerarySelectors)
+
+  const itineraries: FabMobItinerary[] = []
+  const routingErrors: FabMobOtpError[] = []
+
+  await Promise.all(itinerariesWithSelectors.map(async ([baseItinerary, itinerarySelector]) => {
+    const itinerariesToMerge = [baseItinerary]
+
+    for (const [index, place] of additionalPlaces.entries()) {
+      const additionalPlacesWaitingTime = additionalPlacesWaitingTimes[index]
+      const previousItinerary = itinerariesToMerge[itinerariesToMerge.length - 1]
+
+      const newReq = {
+        ...req,
+        body: {
+          ...req.body,
+          variables: {
+            ...req.body.variables,
+            ...getDeparture(previousItinerary, additionalPlacesWaitingTime),
+            fromPlace: encodePlace(previousItinerary.legs[previousItinerary.legs.length - 1].to),
+            toPlace: place
+          }
         }
       }
+
+      const response = await modeHandler(
+        // request does not have proper Request methods, as it seems Express does not have ways to create a Request object.
+        // Will crash if there is an attempt to use the methods.
+        newReq as GraphQlRequest
+      )
+      const newItineraries = response?.data?.plan.itineraries
+      if (newItineraries !== undefined) {
+        itinerariesToMerge.push(itinerarySelector(newItineraries))
+      }
+      const newRoutingErrors = response?.data?.plan.routingErrors
+      if (newRoutingErrors !== undefined) {
+        routingErrors.push(...newRoutingErrors)
+      }
     }
-    const response = await modeHandler(
-      // request does not have proper Request methods, as it seems Express does not have ways to create a Request object.
-      // Will crash if there is an attempt to use the methods.
-      newReq as GraphQlRequest
-    )
-    if (response === undefined) {
-      // We can't build a full response
-      return undefined
+
+    if (itinerariesToMerge.length === additionalPlaces.length + 1) {
+      const mergedItineraries = fusionItineraries(itinerariesToMerge)
+      itineraries.push(mergedItineraries)
     }
-    responses.push(response)
+  }))
+  return {
+    ...baseResponse,
+    data: {
+      plan: {
+        itineraries,
+        routingErrors
+      }
+    }
   }
-  return fusionResponses(responses, itinerarySelectors)
 }
