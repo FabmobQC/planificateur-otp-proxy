@@ -19,7 +19,7 @@ export const handleCarRequest = async (req: GraphQlRequest): Promise<FabMobPlanR
   if (vehiculeType === undefined || !isNbKmPerYear(nbKmPerYear)) {
     return planResponse
   }
-  planResponse.data.plan.itineraries.forEach((itinerary) => {
+  planResponse.data?.plan.itineraries.forEach((itinerary) => {
     const distance = itinerary.legs.reduce((acc, leg) => acc + leg.distance, 0)
     const lastLeg = itinerary.legs.at(-1)
     if (lastLeg === undefined) {

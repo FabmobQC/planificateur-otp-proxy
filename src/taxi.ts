@@ -166,6 +166,9 @@ export const handleTaxiRequest = async (req: GraphQlRequest): Promise<FabMobPlan
     const taxiPricing = values[0]
     const otpResponse = values[1] as AxiosResponse<FabMobPlanResponse>
     const planResponse = otpResponse.data
+    if (planResponse.data?.plan === undefined) {
+      return
+    }
     const taxiItinaries = buildTaxiItineraries(planResponse.data.plan, taxiPricing, variables)
     planResponse.data.plan.itineraries = taxiItinaries
     return planResponse

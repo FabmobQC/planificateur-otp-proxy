@@ -39,7 +39,7 @@ export const handleTransitRequest = async (req: GraphQlRequest): Promise<FabMobP
   setSearchWindow(req)
   const otpResult = await getOtpResult(req) as AxiosResponse<FabMobPlanResponse>
   const planResponse = otpResult.data
-  planResponse.data.plan.itineraries.forEach((itinerary) => {
+  planResponse.data?.plan.itineraries.forEach((itinerary) => {
     if (checkIsRtc(itinerary)) {
       itinerary.transitFare = rtcFare
     } else if (checkIsSts(itinerary)) {

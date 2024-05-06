@@ -21,9 +21,10 @@ export interface FabMobPlan {
 }
 
 export interface FabMobPlanResponse {
-  data: {
+  data?: {
     plan: FabMobPlan
   }
+  errors?: []
 }
 
 export interface FabMobVariables {
