@@ -75,7 +75,7 @@ const buildStopoverLeg = (legsBefore: Leg[], legsAfter: Leg[]): Leg => {
 // A response might have several itineraries.
 // An ItinerarySelector is used to select the itineraries that will be merged together when there are multiple stops.
 // For example, we could merge together all the shortest itineraries in time, then the shortest in distances, then the cheapests, etc.
-type ItinerarySelector = (itineraries: FabMobItinerary[]) => FabMobItinerary
+type ItinerarySelector = (itineraries: FabMobItinerary[]) => FabMobItinerary | undefined
 
 export const fusionItineraries = (
   itineraries: FabMobItinerary[]
@@ -137,6 +137,9 @@ const mapItinerariesWithSelectors = (
   const result: ItineriesWithSelectors = []
   itinerarySelectors.slice(0, nbItineraries).forEach((itinerarySelector) => {
     const itinerary = itinerarySelector(baseItineraries)
+    if (itinerary === undefined) {
+      return
+    }
     const itineraries = result.map(([itinerary]) => itinerary)
     if (!itineraries.includes(itinerary)) {
       result.push([itinerary, itinerarySelector])
@@ -201,7 +204,10 @@ export const handleMultipleStops = async (
       )
       const newItineraries = response?.data?.plan.itineraries
       if (newItineraries !== undefined) {
-        itinerariesToMerge.push(itinerarySelector(newItineraries))
+        const itinerary = itinerarySelector(newItineraries)
+        if (itinerary !== undefined) {
+          itinerariesToMerge.push(itinerary)
+        }
       }
       const newRoutingErrors = response?.data?.plan.routingErrors
       if (newRoutingErrors !== undefined) {
