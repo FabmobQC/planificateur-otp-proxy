@@ -36,8 +36,8 @@ export const handleTransitRequestWithMultipleStops = async (req: GraphQlRequest)
 }
 
 export const handleTransitRequest = async (req: GraphQlRequest): Promise<FabMobPlanResponse> => {
-  setSearchWindow(req)
-  const otpResult = await getOtpResult(req) as AxiosResponse<FabMobPlanResponse>
+  const newReq = setSearchWindow(req)
+  const otpResult = await getOtpResult(newReq) as AxiosResponse<FabMobPlanResponse>
   const planResponse = otpResult.data
   planResponse.data?.plan.itineraries.forEach((itinerary) => {
     if (checkIsRtc(itinerary)) {
@@ -51,12 +51,21 @@ export const handleTransitRequest = async (req: GraphQlRequest): Promise<FabMobP
   return planResponse
 }
 
-const setSearchWindow = (req: GraphQlRequest): void => {
+const setSearchWindow = (req: GraphQlRequest): GraphQlRequest => {
   const oldQuery = req.body.query
   const searchWindowValue = 24 * 60 * 60 // 24 hours in seconds
   // Unfortunately, it seems there's no tool to modify a GraphQL query
   const newQuery = oldQuery.replace('plan(', `plan(\nsearchWindow: ${searchWindowValue}`)
-  req.body.query = newQuery
+  // Typescript complains because the new GraphQlRequest object does not have all the methods
+  // Unfortunately, express does not provide a constructor for GraphQlRequest
+  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+  return {
+    ...req,
+    body: {
+      ...req.body,
+      query: newQuery
+    }
+  } as GraphQlRequest
 }
 
 const checkIsRtc = (itinerary: FabMobItinerary): boolean => {
