@@ -18,3 +18,9 @@ export const getOtpResult = async (req: GraphQlRequest): Promise<AxiosResponse> 
     params: req.query
   })
 }
+
+// For unknown reason, get requests are not forwarded properly by getOtpResult
+export const getOtpGetResult = async (req: Request): Promise<AxiosResponse> => {
+  const response = await axios.get(`${otpAddress}${req.url}`, { headers: req.headers })
+  return response
+}

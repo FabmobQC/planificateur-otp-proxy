@@ -6,7 +6,7 @@ import timezone from 'dayjs/plugin/timezone.js'
 import cors from 'cors'
 import express, { type Response } from 'express'
 
-import { getOtpResult, type GraphQlRequest } from './otp.js'
+import { getOtpGetResult, getOtpResult, type GraphQlRequest } from './otp.js'
 import { handleTaxiRequestWithMultipleStops } from './taxi.js'
 import { handleCarRequestWithMultipleStops } from './car.js'
 import { handleTransitRequestWithMultipleStops } from './transit.js'
@@ -24,6 +24,15 @@ app.use(express.json())
 app.get('/touristic-places', async (req: unknown, res: Response): Promise<void> => {
   const touristicPlaces = await handleTouristicPlacesRequest(req)
   res.send(JSON.stringify({ touristicPlaces }))
+})
+
+app.get('*', async (req, res): Promise<void> => {
+  try {
+    const response = await getOtpGetResult(req)
+    res.send(response.data)
+  } catch (error) {
+    res.status(500)
+  }
 })
 
 app.all('*', async (req: GraphQlRequest, res: Response): Promise<void> => {
