@@ -13,6 +13,7 @@ import { handleTransitRequestWithMultipleStops } from './transit.js'
 import { handleTouristicPlacesRequest } from './touristic-places.js'
 import { handleMultipleStops } from './multiple-stops.js'
 import { handleCommunautoStationsRequest } from './communauto.js'
+import { handleAmenitiesRequest } from './amenities.js'
 
 dayjs.extend(utc)
 dayjs.extend(timezone)
@@ -21,6 +22,11 @@ dayjs.tz.setDefault('America/Montreal')
 const app = express()
 app.use(cors())
 app.use(express.json())
+
+app.get('/amenities', async (req: unknown, res: Response): Promise<void> => {
+  const amenities = await handleAmenitiesRequest(req)
+  res.send(JSON.stringify({ amenities }))
+})
 
 app.get('/communauto-stations', async (req: unknown, res: Response): Promise<void> => {
   const communautoStations = await handleCommunautoStationsRequest(req)

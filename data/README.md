@@ -11,3 +11,6 @@ Gathered manually from OSM's data.
 
 ## quebec_touristic_places_2.csv
 Gathered manually
+
+# vecteur5
+Provided by Vecteur5
