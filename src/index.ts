@@ -14,6 +14,7 @@ import { handleTouristicPlacesRequest } from './touristic-places.js'
 import { handleMultipleStops } from './multiple-stops.js'
 import { handleCommunautoStationsRequest } from './communauto.js'
 import { handleAmenitiesRequest } from './amenities.js'
+import { handleAdministrativeRegionsRequest } from './administrative-regions.js'
 
 dayjs.extend(utc)
 dayjs.extend(timezone)
@@ -36,6 +37,11 @@ app.get('/communauto-stations', async (req: unknown, res: Response): Promise<voi
 app.get('/touristic-places', async (req: unknown, res: Response): Promise<void> => {
   const touristicPlaces = await handleTouristicPlacesRequest(req)
   res.send(JSON.stringify({ touristicPlaces }))
+})
+
+app.get('/administrative-regions', async (req: unknown, res: Response): Promise<void> => {
+  const regions = await handleAdministrativeRegionsRequest(req)
+  res.send(regions)
 })
 
 app.get('*', async (req, res): Promise<void> => {
