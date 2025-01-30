@@ -2,46 +2,69 @@ import type { FeatureCollection, Polygon } from '@turf/helpers'
 import { loadJsonFile } from './file-tools.js'
 
 type Vecteur5Region =
+  | 'Abitibi-Témiscamingue'
   | 'Centre-du-Québec'
   | 'Laurentide'
 
-type Vecteur5Type =
+type Vecteur5OldType =
   | 'Education'
   | 'Grocery Store'
   | 'Health center'
 
+type Vecteur5Type =
+  | 'Education'
+  | 'Épiceries'
+  | 'Santé'
+
 interface Vecteur5Amenity {
-  'id-unique': string
-  'fid': number
   'Nom': string
-  'lon': number
-  'lat': number
+  'Latitude': string
+  'Longitude': string
   'Type': Vecteur5Type
-  'layer': string
-  'Code MRC': number
-  'Nom MRC': string
-  'Région': Vecteur5Region
+  'index_right': number
+  'region': Vecteur5Region
+  'mrc': string
+  'NOM_COURT'?: string | null
 }
 
 interface Amenity {
   id: string
   name: string
-  type: string
+  type: Vecteur5OldType
   longitude: number
   latitude: number
 }
 
-const geojsonAmenitiesDrummondville = loadJsonFile('./data/vecteur5/amenities_drummondville.geojson') as unknown as FeatureCollection<Polygon, Vecteur5Amenity>
-const geojsonAmenitiesLaurentides = loadJsonFile('./data/vecteur5/amenities_laurentides.geojson') as unknown as FeatureCollection<Polygon, Vecteur5Amenity>
+const mapNewTypeToOldType = (type: Vecteur5Type): Vecteur5OldType => {
+  switch (type) {
+    case 'Education':
+      return 'Education'
+    case 'Épiceries':
+      return 'Grocery Store'
+    case 'Santé':
+      return 'Health center'
+  }
+}
+const geojsonAmenitiesGrocery = loadJsonFile('./data/vecteur5/Epiceries_3_regions.geojson') as unknown as FeatureCollection<Polygon, Vecteur5Amenity>
+const geojsonAmenitiesHealth = loadJsonFile('./data/vecteur5/Sante_3_regions.geojson') as unknown as FeatureCollection<Polygon, Vecteur5Amenity>
+const geojsonAmenitiesEducation = loadJsonFile('./data/vecteur5/Scolaire_3_regions.geojson') as unknown as FeatureCollection<Polygon, Vecteur5Amenity>
 
-const amenities: Amenity[] = [geojsonAmenitiesDrummondville, geojsonAmenitiesLaurentides].flatMap((geojson) => {
-  return geojson.features.map((feature) => ({
-    id: feature.properties['id-unique'],
-    name: feature.properties.Nom,
-    type: feature.properties.Type,
-    longitude: feature.properties.lon,
-    latitude: feature.properties.lat
-  }))
+const amenities: Amenity[] = [geojsonAmenitiesGrocery, geojsonAmenitiesHealth, geojsonAmenitiesEducation].flatMap((geojson) => {
+  const fileAmenities: Amenity[] = []
+  geojson.features.forEach((feature) => {
+    if (feature.properties.Nom === null) {
+      return
+    }
+    const amenity: Amenity = {
+      id: `${feature.properties.Nom}-${feature.properties.Longitude}-${feature.properties.Latitude}`,
+      name: feature.properties.Nom,
+      type: mapNewTypeToOldType(feature.properties.Type),
+      longitude: parseFloat(feature.properties.Longitude),
+      latitude: parseFloat(feature.properties.Latitude)
+    }
+    fileAmenities.push(amenity)
+  })
+  return fileAmenities
 })
 
 export const handleAmenitiesRequest = async (req: unknown): Promise<unknown[]> => {
